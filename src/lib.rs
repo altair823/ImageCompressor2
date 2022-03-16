@@ -1,12 +1,16 @@
+use std::ops::Deref;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::thread;
+use crossbeam::atomic::AtomicCell;
 use eframe::{epi, egui};
 use egui::Slider;
 use image_compressor::folder_compress;
 
 #[derive(Default)]
 pub struct App{
-    origin_dir: Option<PathBuf>,
-    dest_dir: Option<PathBuf>,
+    origin_dir: Arc<Option<PathBuf>>,
+    dest_dir: Arc<Option<PathBuf>>,
     thread_count: i32,
 }
 
@@ -15,7 +19,7 @@ impl epi::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Original folder");
 
-            if let Some(picked_path) = &self.origin_dir {
+            if let Some(picked_path) = &self.origin_dir.as_ref() {
                 ui.horizontal(|ui| {
                     ui.label("Picked folder:");
                     ui.monospace(match picked_path.to_str(){
@@ -26,11 +30,11 @@ impl epi::App for App {
             }
             if ui.button("select").clicked() {
                 if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                    self.origin_dir = Some(path);
+                    self.origin_dir = Arc::new(Some(path));
                 }
             }
             ui.heading("Destination folder");
-            if let Some(dest_dir) = &self.dest_dir {
+            if let Some(dest_dir) = &self.dest_dir.as_ref() {
                 ui.horizontal(|ui| {
                     ui.label("Picked folder:");
                     ui.monospace(match dest_dir.to_str(){
@@ -41,7 +45,7 @@ impl epi::App for App {
             }
             if ui.button("select").clicked() {
                 if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                    self.dest_dir = Some(path);
+                    self.dest_dir = Arc::new(Some(path));
                 }
             }
 
@@ -49,15 +53,21 @@ impl epi::App for App {
             ui.add(Slider::new(&mut self.thread_count, 1..=16).text("thread"));
 
             if ui.button("Compress!").clicked() {
-                match folder_compress(&self.origin_dir.as_ref().unwrap(), &self.dest_dir.as_ref().unwrap(), self.thread_count) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        println!("Cannot compress the folder!: {}", e);
+                let s = self.origin_dir.clone();
+                let d = self.dest_dir.clone();
+                thread::spawn(move ||{
+                    let o = s;
+                    match folder_compress(&o.unwrap(), &d.unwrap(), 5){
+                        Ok(_) => {}
+                        Err(e) => {
+                            println!("Cannot compress the folder!: {}", e);
+                        }
                     }
-                };
+                });
             }
         });
     }
+
 
     fn name(&self) -> &str {
         "My egui App"
