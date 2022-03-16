@@ -20,12 +20,13 @@ fn convert_to_jpg<'a, O: AsRef<Path> + ?Sized, D: AsRef<Path> + ?Sized>(origin_f
 
 fn compress(resized_img_data: Vec<u8>, target_width: usize, target_height: usize, quality: f32) -> Result<Vec<u8>, String> {
     let mut comp = Compress::new(ColorSpace::JCS_RGB);
-    comp.set_scan_optimization_mode(ScanMode::AllComponentsTogether);
+    comp.set_scan_optimization_mode(ScanMode::Auto);
     comp.set_quality(quality);
 
     comp.set_size(target_width, target_height);
 
     comp.set_mem_dest();
+    comp.set_optimize_scans(true);
     comp.start_compress();
 
     let mut line = 0;
@@ -54,7 +55,7 @@ fn resize(path: &Path, resize_ratio: f32) -> Result<(Vec<u8>, usize, usize), Str
     let resized_img = img.resize(
         width as u32,
         height as u32,
-        FilterType::Lanczos3);
+        FilterType::Triangle);
     Ok((resized_img.to_rgb8().to_vec(), resized_img.width() as usize, resized_img.height() as usize))
 }
 
