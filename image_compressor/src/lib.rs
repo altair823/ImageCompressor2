@@ -18,15 +18,15 @@ pub fn folder_compress(root: &PathBuf, dest: &PathBuf, thread_num: i32) -> Resul
     thread::scope(|s| {
         for _ in 0..thread_num {
             let _handle = s.spawn(|_| {
-                process(&queue, &dest);
+                process(&queue, &dest, &root);
             });
-        }
+         }
     }).unwrap();
-    //process(&queue, &dest);
+    //process(&queue, &dest, &root);
     return Ok(());
 }
 
-fn process(queue: &ArrayQueue<PathBuf>, dest_dir: &PathBuf){
+fn process(queue: &ArrayQueue<PathBuf>, dest_dir: &PathBuf, root: &PathBuf){
     while !queue.is_empty() {
         match queue.pop() {
             None => break,
@@ -39,10 +39,16 @@ fn process(queue: &ArrayQueue<PathBuf>, dest_dir: &PathBuf){
                     },
                 };
                 let parent = match file.parent(){
-                    Some(p) => p,
+                    Some(p) => match p.strip_prefix(root){
+                        Ok(p) => p,
+                        Err(_) => {
+                            println!("Cannot strip the prefix of file {}", file_name);
+                            continue;
+                        }
+                    },
                     None => {
-                        println!("Cannot find the parent directory of file {}.", file_name);
-                        return;
+                        println!("Cannot find the parent directory of file {}", file_name);
+                        continue;
                     }
                 };
                 let new_dest_dir = dest_dir.join(parent);
@@ -51,12 +57,14 @@ fn process(queue: &ArrayQueue<PathBuf>, dest_dir: &PathBuf){
                         Ok(_) => {}
                         Err(_) => {
                             println!("Cannot create the parent directory of file {}", file_name);
-                            return;
+                            continue;
                         }
                     };
                 }
                 match compress_to_jpg(&file, new_dest_dir){
-                    Ok(_) => {}
+                    Ok(_) => {
+                        println!("Compress complete! File: {}", file_name);
+                    }
                     Err(e) => {
                         println!("Cannot compress image file {} : {}", file_name, e);
                     }
@@ -107,7 +115,7 @@ mod tests {
     #[test]
     fn folder_compress_test() {
         let (_, test_origin_dir, test_dest_dir) = setup(4);
-        folder_compress(&test_origin_dir, &test_dest_dir, 4).unwrap();
-        cleanup(4);
+        folder_compress(&test_origin_dir, &test_dest_dir, 10).unwrap();
+        //cleanup(4);
     }
 }

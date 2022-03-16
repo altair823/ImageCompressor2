@@ -222,10 +222,10 @@ mod tests{
     #[test]
     fn compress_to_jpg_copy_test(){
         let (_, test_origin_dir, test_dest_dir) = setup(3);
-        fs::copy("original_images/file8.txt", test_origin_dir.join("file8.txt")).unwrap();
+        fs::copy("original_images/file7.txt", test_origin_dir.join("file7.txt")).unwrap();
 
-        compress_to_jpg(test_origin_dir.join("file8.txt"), &test_dest_dir).unwrap();
-        assert!(test_dest_dir.join("file8.txt").is_file());
+        compress_to_jpg(test_origin_dir.join("file7.txt"), &test_dest_dir).unwrap();
+        assert!(test_dest_dir.join("file7.txt").is_file());
         cleanup(3);
     }
 
