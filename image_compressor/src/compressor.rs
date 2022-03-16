@@ -55,7 +55,7 @@ fn resize(path: &Path, resize_ratio: f32) -> Result<(Vec<u8>, usize, usize), Str
     let resized_img = img.resize(
         width as u32,
         height as u32,
-        FilterType::Triangle);
+        FilterType::Nearest);
     Ok((resized_img.to_rgb8().to_vec(), resized_img.width() as usize, resized_img.height() as usize))
 }
 
