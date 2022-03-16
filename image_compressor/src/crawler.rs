@@ -20,7 +20,20 @@ pub fn get_file_list<O: AsRef<Path>>(root: O) -> io::Result<Vec<PathBuf>> {
         }
         i += 1;
     }
-    return Ok(image_list);
+
+    Ok(image_list)
+}
+
+pub fn get_dir_list<O: AsRef<Path>>(root: O) -> io::Result<Vec<PathBuf>> {
+    let cur_list: Vec<PathBuf> = root.as_ref().read_dir()?
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    let dir_list = cur_list.iter()
+        .filter(|p| p.is_dir())
+        .map(|p| PathBuf::from(p.to_path_buf()))
+        .collect::<Vec<_>>();
+
+    Ok(dir_list)
 }
 
 
@@ -100,5 +113,12 @@ mod tests {
                               PathBuf::from("test_original_images/file8.txt")].sort();
         assert_eq!(test_vec, expect_vec);
         cleanup();
+    }
+
+    #[test]
+    fn get_dir_list_test(){
+        setup();
+        let dir_list = get_dir_list("test_original_images");
+        println!("{:?}", dir_list);
     }
 }

@@ -6,10 +6,10 @@ use crawler::get_file_list;
 use crossbeam::thread;
 use crossbeam::queue::ArrayQueue;
 
-mod crawler;
-mod compressor;
+pub mod crawler;
+pub mod compressor;
 
-pub fn folder_compress(root: &PathBuf, dest: &PathBuf, thread_num: i32) -> Result<(), Box<dyn Error>>{
+pub fn folder_compress(root: &PathBuf, dest: &PathBuf, thread_num: u32) -> Result<(), Box<dyn Error>>{
     let to_comp_file_list = get_file_list(&root)?;
     let queue = ArrayQueue::new(to_comp_file_list.len());
     for i in to_comp_file_list{
@@ -116,6 +116,6 @@ mod tests {
     fn folder_compress_test() {
         let (_, test_origin_dir, test_dest_dir) = setup(4);
         folder_compress(&test_origin_dir, &test_dest_dir, 10).unwrap();
-        //cleanup(4);
+        cleanup(4);
     }
 }
