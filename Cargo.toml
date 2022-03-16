@@ -11,3 +11,4 @@ egui = "0.17.0"
 rfd = "0.8.1"
 crossbeam = "0.8.1"
 image_compressor = {path = "./image_compressor"}
+zip_compressor = {path = "./zip_compressor"}
