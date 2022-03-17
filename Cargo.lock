@@ -1301,7 +1301,7 @@ dependencies = [
 name = "image_compressor"
 version = "0.1.0"
 dependencies = [
- "crossbeam",
+ "crossbeam-queue",
  "image",
  "mozjpeg",
 ]

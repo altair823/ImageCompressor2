@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::ffi::OsStr;
-use std::fs;
+use std::{fs, io};
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use mozjpeg::{ColorSpace, Compress, ScanMode};
 use image::imageops::FilterType;
@@ -18,7 +18,7 @@ fn convert_to_jpg<'a, O: AsRef<Path> + ?Sized, D: AsRef<Path> + ?Sized>(origin_f
     Ok(new_path)
 }
 
-fn compress(resized_img_data: Vec<u8>, target_width: usize, target_height: usize, quality: f32) -> Result<Vec<u8>, String> {
+fn compress(resized_img_data: Vec<u8>, target_width: usize, target_height: usize, quality: f32) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut comp = Compress::new(ColorSpace::JCS_RGB);
     comp.set_scan_optimization_mode(ScanMode::Auto);
     comp.set_quality(quality);
@@ -44,7 +44,7 @@ fn compress(resized_img_data: Vec<u8>, target_width: usize, target_height: usize
     Ok(compressed)
 }
 
-fn resize(path: &Path, resize_ratio: f32) -> Result<(Vec<u8>, usize, usize), String> {
+fn resize(path: &Path, resize_ratio: f32) -> Result<(Vec<u8>, usize, usize), Box<dyn Error>> {
     let img = image::open(path).map_err(|e| e.to_string())?;
     let width = img.width() as usize;
     let height = img.height() as usize;
@@ -73,7 +73,7 @@ fn resize(path: &Path, resize_ratio: f32) -> Result<(Vec<u8>, usize, usize), Str
 /// println!("Original file size: {}, Compressed file size: {}",
 ///     &test_origin_path.metadata().unwrap().len(), test_dest_path.metadata().unwrap().len());
 /// ```
-pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, target_dir: D) -> Result<(), Box<dyn Error>> {
+pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, target_dir: D) -> Result<PathBuf, Box<dyn Error>> {
     let origin_file_path = origin_file_path.as_ref();
     let target_dir = target_dir.as_ref();
 
@@ -84,6 +84,7 @@ pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, targ
         },
         None => "",
     };
+
     let file_stem = origin_file_path.file_stem().unwrap();
     let file_extension = match origin_file_path.extension(){
         None => OsStr::new(""),
@@ -97,10 +98,10 @@ pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, targ
         match convert_to_jpg(origin_file_path, parent){
             Ok(_) => {},
             Err(e) => {
-                println!("Cannot convert file {} to jpg. Just copy it. : {}", file_name, e);
+                let m = format!("Cannot convert file {} to jpg. Just copy it. : {}", file_name, e);
                 fs::copy(origin_file_path,
                          target_dir.join(&file_name))?;
-                return Ok(());
+                return Err(Box::new(io::Error::new(ErrorKind::InvalidData, m)))
             },
         };
     }
@@ -125,36 +126,39 @@ pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, targ
         Ok(v) => v,
         Err(e) => {
             println!("Cannot resize the image {} : {}", file_name, e);
-            return Ok(())
+            return Err(e)
         },
     };
     let compressed_img_data = match compress(resized_img_data, target_width, target_height, quality) {
         Ok(v) => v,
         Err(e) => {
             println!("Cannot compress the image {} : {}", file_name, e);
-            return Ok(())
+            return Err(e)
         },
     };
 
     let mut target_file_name = PathBuf::from(file_stem);
     target_file_name.set_extension("jpg");
     let target_file = target_dir.join(target_file_name);
-    let mut file = BufWriter::new(match File::create(target_file) {
+    if target_file.is_file(){
+
+    }
+    let mut file = BufWriter::new(match File::create(&target_file) {
         Ok(o) => o,
         Err(e) => {
             println!("Cannot create a buffer of the image file {} : {}", file_name, e);
-            return Ok(())
+            return Err(Box::new(e))
         },
     });
     match file.write_all(&compressed_img_data){
         Ok(o) => o,
         Err(e) => {
             println!("Cannot save the image file {} : {}", file_name, e);
-            return Ok(())
+            return Err(Box::new(e))
         },
     };
 
-    Ok(())
+    Ok(target_file)
 }
 
 #[cfg(test)]

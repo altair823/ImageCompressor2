@@ -9,14 +9,23 @@ use crossbeam::queue::ArrayQueue;
 use image_compressor::crawler::get_dir_list;
 
 fn get_7z_executable_path() -> Result<PathBuf, Box<dyn Error>>{
-    let current_dir = match std::env::current_exe(){
-        Ok(p) => p.parent().unwrap().to_path_buf(),
-        Err(_) => return Err(Box::new(io::Error::new(ErrorKind::NotFound, "Cannot get the current directory!"))),
-    };
+    // let current_dir = match std::env::current_exe(){
+    //     Ok(p) => p.parent().unwrap().to_path_buf(),
+    //     Err(_) => return Err(Box::new(io::Error::new(ErrorKind::NotFound, "Cannot get the current directory!"))),
+    // };
+    // match OS {
+    //     "macos" => Ok(current_dir.join(PathBuf::from("7zz"))),
+    //     "windows" => Ok(current_dir.join(PathBuf::from("7z.exe"))),
+    //     "linux" => Ok(current_dir.join(PathBuf::from("7zzs"))),
+    //     e => {
+    //         println!("Doesn't support {} currently!", e);
+    //         return Err(Box::new(io::Error::new(ErrorKind::NotFound, "Cannot find the 7z executable!")));
+    //     }
+    // }
     match OS {
-        "macos" => Ok(current_dir.join(PathBuf::from("7zz"))),
-        "windows" => Ok(current_dir.join(PathBuf::from("7z.exe"))),
-        "linux" => Ok(current_dir.join(PathBuf::from("7zzs"))),
+        "macos" => Ok(PathBuf::from("./7zz")),
+        "windows" => Ok(PathBuf::from("7z.exe")),
+        "linux" => Ok(PathBuf::from("./7zzs")),
         e => {
             println!("Doesn't support {} currently!", e);
             return Err(Box::new(io::Error::new(ErrorKind::NotFound, "Cannot find the 7z executable!")));
