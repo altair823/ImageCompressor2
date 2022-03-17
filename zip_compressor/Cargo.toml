@@ -1,0 +1,15 @@
+[package]
+name = "zip_compressor"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lzma-rs = "0.2.0"
+subprocess = "0.2.8"
+crossbeam = "0.8.1"
+image_compressor = {path = "../image_compressor"}
+
+[dev-dependencies]
+fs_extra = "1.2.0"
