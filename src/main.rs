@@ -1,6 +1,4 @@
-use eframe;
 use eframe::{NativeOptions, run_native};
-use eframe::epaint::Shape::Vec;
 use egui::Vec2;
 use ImageCompressor::App;
 

@@ -1,9 +1,4 @@
-use std::error::Error;
-use std::ops::Deref;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::thread;
-use crossbeam::atomic::AtomicCell;
 use eframe::{epi, egui};
 use egui::Slider;
 use image_compressor::folder_compress;
@@ -18,7 +13,7 @@ pub struct App{
 }
 
 impl epi::App for App {
-    fn update(&mut self, ctx: &egui::Context, frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &epi::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Original folder");
 
@@ -63,7 +58,7 @@ impl epi::App for App {
                     }
                 };
                 if self.to_zip{
-                    match compress_root_dir_to_7z(&self.origin_dir.as_ref().unwrap(), &self.dest_dir.as_ref().unwrap(), self.thread_count) {
+                    match compress_root_dir_to_7z(&self.dest_dir.as_ref().unwrap(), &self.dest_dir.as_ref().unwrap(), self.thread_count) {
                         Ok(_) => {}
                         Err(e) => {
                             println!("Cannot archive the folder!: {}", e);
