@@ -6,7 +6,7 @@ use std::sync::{Arc, mpsc};
 use compressor::compress_to_jpg;
 use crawler::get_file_list;
 use std::thread;
-use crossbeam_queue::{ArrayQueue, SegQueue};
+use crossbeam_queue::SegQueue;
 
 pub mod crawler;
 pub mod compressor;
@@ -55,21 +55,30 @@ pub fn folder_compress_with_channel(root: PathBuf,
     return Ok(());
 }
 
-/// duplicated.
-pub fn folder_compress(root: &PathBuf, dest: &PathBuf, thread_num: u32) -> Result<(), Box<dyn Error>>{
+
+pub fn folder_compress(root: PathBuf, dest: PathBuf, thread_num: u32) -> Result<(), Box<dyn Error>>{
     let to_comp_file_list = get_file_list(&root)?;
-    let queue = ArrayQueue::new(to_comp_file_list.len());
+    let queue = Arc::new(SegQueue::new());
     for i in to_comp_file_list{
-        queue.push(i).unwrap();
+        queue.push(i);
     }
-    // thread::scope(|s| {
-    //     for _ in 0..thread_num {
-    //         let _handle = s.spawn(|_| {
-    //             process(&queue, &dest, &root);
-    //         });
-    //      }
-    // }).unwrap();
-    //process(&queue, &dest, &root);
+
+    let mut handles = Vec::new();
+    let arc_root = Arc::new(root);
+    let arc_dest = Arc::new(dest);
+    for _ in 0..thread_num {
+        let arc_root = Arc::clone(&arc_root);
+        let arc_dest = Arc::clone(&arc_dest);
+        let arc_queue = Arc::clone(&queue);
+        let handle = thread::spawn(move || {
+            process(arc_queue, &arc_dest, &arc_root);
+        });
+        handles.push(handle);
+    }
+
+    for h in handles{
+        h.join().unwrap();
+    }
     return Ok(());
 }
 
@@ -134,7 +143,7 @@ fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
     }
 }
 
-fn process(queue: &ArrayQueue<PathBuf>, dest_dir: &PathBuf, root: &PathBuf){
+fn process(queue: Arc<SegQueue<PathBuf>>, dest_dir: &PathBuf, root: &PathBuf){
     while !queue.is_empty() {
         match queue.pop() {
             None => break,
@@ -223,7 +232,7 @@ mod tests {
     #[test]
     fn folder_compress_test() {
         let (_, test_origin_dir, test_dest_dir) = setup(4);
-        folder_compress(&test_origin_dir, &test_dest_dir, 10).unwrap();
+        folder_compress(test_origin_dir, test_dest_dir, 4).unwrap();
         cleanup(4);
     }
 }

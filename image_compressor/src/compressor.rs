@@ -1,13 +1,12 @@
 use std::error::Error;
 use std::ffi::OsStr;
 use std::{fs, io};
-use std::f32::consts::E;
 use std::fs::File;
 use std::io::{BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use mozjpeg::{ColorSpace, Compress, ScanMode};
 use image::imageops::FilterType;
-use crate::crawler::get_dir_list;
+use crate::get_file_list;
 
 fn convert_to_jpg<'a, O: AsRef<Path> + ?Sized, D: AsRef<Path> + ?Sized>(origin_file: &'a O, dest_dir: &'a D) -> Result<PathBuf, Box<dyn Error>>{
     let img = image::open(&origin_file)?;
@@ -20,22 +19,35 @@ fn convert_to_jpg<'a, O: AsRef<Path> + ?Sized, D: AsRef<Path> + ?Sized>(origin_f
     Ok(new_path)
 }
 
-fn delete_original_file(file_path: &Path) -> Result<PathBuf, Box<dyn Error>>{
-    let current_dir_file_list = match get_dir_list(file_path.parent().unwrap()){
-        Ok(v) => v,
+fn delete_converted_file<O: AsRef<Path>>(file_path: O) -> Result<O, Box<dyn Error>>
+    where std::path::PathBuf: PartialEq<O>{
+    let current_dir_file_list = match get_file_list(file_path.as_ref().parent().unwrap()){
+        Ok(mut v) => {
+            if let Some(index) = v.iter().position(|x| *x == file_path){
+                v.remove(index);
+            }
+            v
+        },
         Err(e) => {
-            println!("Cannot get the file list in directory {}: {}", file_path.parent().unwrap().to_str().unwrap(), e);
             return Err(Box::new(e));
         }
     };
-    let current_dir_file_list = current_dir_file_list.iter().map(|p| p.file_stem().unwrap()).collect::<Vec<_>>();
-    if !current_dir_file_list.contains(&file_path.file_stem().unwrap()){
-        println!("Connot delete! The file {} can be the original file. ", file_path.file_name().unwrap().to_str().unwrap());
+
+
+    let current_dir_file_list = current_dir_file_list.iter().map(|p| p.file_stem().unwrap().to_str().unwrap()).collect::<Vec<_>>();
+    let t = file_path.as_ref().file_stem().unwrap().to_str().unwrap();
+    if !current_dir_file_list.contains(&t){
         return Err(Box::new(io::Error::new(ErrorKind::NotFound,
-                                           format!("Connot delete! The file {} can be the original file. ", file_path.file_name().unwrap().to_str().unwrap()))))
+                                           format!("Cannot delete! The file {} can be the original file. ",
+                                                   file_path.as_ref().file_name().unwrap().to_str().unwrap()))))
     }
 
-    return
+    match fs::remove_file(&file_path){
+        Ok(_) => (),
+        Err(e) => return Err(Box::new(e)),
+    }
+
+    Ok(file_path)
 }
 
 fn compress(resized_img_data: Vec<u8>, target_width: usize, target_height: usize, quality: f32) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -114,9 +126,21 @@ pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, targ
         None => Path::new(""),
         Some(e) => e,
     };
+
+    let mut target_file_name = PathBuf::from(file_stem);
+    target_file_name.set_extension("jpg");
+    let target_file = target_dir.join(target_file_name);
+    if target_dir.join(file_name).is_file(){
+        return Err(Box::new(io::Error::new(ErrorKind::AlreadyExists, format!("The file is already existed! file: {}", file_name))))
+    }
+    if target_file.is_file(){
+        return Err(Box::new(io::Error::new(ErrorKind::AlreadyExists, format!("The compressed file is already existed! file: {}", target_file.file_name().unwrap().to_str().unwrap()))))
+    }
+
+    let mut converted_file: Option<PathBuf> = None;
     if file_extension.ne("jpg") && file_extension.ne("jpeg") {
         match convert_to_jpg(origin_file_path, parent){
-            Ok(_) => {},
+            Ok(p) => converted_file = Some(p),
             Err(e) => {
                 let m = format!("Cannot convert file {} to jpg. Just copy it. : {}", file_name, e);
                 fs::copy(origin_file_path,
@@ -157,12 +181,7 @@ pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, targ
         },
     };
 
-    let mut target_file_name = PathBuf::from(file_stem);
-    target_file_name.set_extension("jpg");
-    let target_file = target_dir.join(target_file_name);
-    if target_file.is_file(){
 
-    }
     let mut file = BufWriter::new(match File::create(&target_file) {
         Ok(o) => o,
         Err(e) => {
@@ -177,6 +196,17 @@ pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, targ
             return Err(Box::new(e))
         },
     };
+
+    match converted_file {
+        Some(p) => {
+            match delete_converted_file(p){
+                Ok(_) => (),
+                Err(e) => (println!("{}", e)),
+            }
+        }
+        None => {},
+    }
+
 
     Ok(target_file)
 }
@@ -254,4 +284,16 @@ mod tests{
         cleanup(3);
     }
 
+    #[test]
+    fn delete_converted_file_test(){
+        let (_, test_origin_dir, test_dest_dir) = setup(7);
+        //fs::copy("original_images/file1.png", test_origin_dir.join("file1.png")).unwrap();
+        fs::copy("original_images/file2.jpg", test_origin_dir.join("file2.jpg")).unwrap();
+
+        match delete_converted_file(test_origin_dir.join("file2.jpg")){
+            Ok(o) => println!("{}", o.to_str().unwrap()),
+            Err(e) => println!("{}", e),
+        }
+        cleanup(7);
+    }
 }

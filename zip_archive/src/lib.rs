@@ -3,7 +3,6 @@ use std::env::consts::OS;
 use std::error::Error;
 use std::io;
 use std::io::ErrorKind;
-use std::sync::Arc;
 use std::sync::mpsc::Sender;
 use subprocess::Exec;
 use crossbeam::{queue, thread};
@@ -39,25 +38,26 @@ fn compress_a_dir_to_7z(origin: &Path, dest: &Path, root: &Path) ->Result<PathBu
 
     let compressor_path = get_7z_executable_path()?;
 
-    let zip_path = match dest.join(&match origin.strip_prefix(root){
+    let zip_path = dest.join(&match origin.strip_prefix(root){
         Ok(p) => p,
         Err(_) => origin,
-    }).to_str(){
-        Some(s) => format!("{}.7z", s),
-        None => return Err(Box::new(io::Error::new(ErrorKind::NotFound, "Cannot get the original directory path!"))),
-    };
+    });
 
-    if Path::new(zip_path.as_str()).is_dir(){
+    if zip_path.is_file(){
+        return Err(Box::new(io::Error::new(ErrorKind::AlreadyExists, "The 7z archive file already exists!")));
+    }
+
+    if Path::new(zip_path.to_str().unwrap()).is_dir(){
         return Err(Box::new(io::Error::new(ErrorKind::AlreadyExists, "The 7z file is already existed! Abort archiving.")));
     }
 
     let exec = Exec::cmd(compressor_path)
-        .args(&vec!["a", "-mx=9", "-t7z", zip_path.as_str(), match origin.to_str(){
+        .args(&vec!["a", "-mx=9", "-t7z", zip_path.to_str().unwrap(), match origin.to_str(){
             None => return Err(Box::new(io::Error::new(ErrorKind::NotFound, "Cannot get the destination directory path!"))),
             Some(s) => s,
         }]);
     exec.join()?;
-    return Ok(PathBuf::from(zip_path));
+    return Ok(zip_path);
 }
 
 fn process(queue: &ArrayQueue<PathBuf>, dest_dir: &PathBuf, root: &PathBuf){
@@ -89,7 +89,12 @@ fn process_with_sender(queue: &ArrayQueue<PathBuf>,
                     Err(e) => println!("Massege passing error!: {}", e),
                 }
             }
-            Err(e) => println!("Error occurred! : {}", e),
+            Err(e) => {
+                match sender.send(format!("7z archiving error occured!: {}", e)) {
+                    Ok(_) => {},
+                    Err(e) => println!("Massege passing error!: {}", e),
+                }
+            },
         };
     }
 }
