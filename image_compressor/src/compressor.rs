@@ -1,11 +1,13 @@
 use std::error::Error;
 use std::ffi::OsStr;
 use std::{fs, io};
+use std::f32::consts::E;
 use std::fs::File;
 use std::io::{BufWriter, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use mozjpeg::{ColorSpace, Compress, ScanMode};
 use image::imageops::FilterType;
+use crate::crawler::get_dir_list;
 
 fn convert_to_jpg<'a, O: AsRef<Path> + ?Sized, D: AsRef<Path> + ?Sized>(origin_file: &'a O, dest_dir: &'a D) -> Result<PathBuf, Box<dyn Error>>{
     let img = image::open(&origin_file)?;
@@ -16,6 +18,24 @@ fn convert_to_jpg<'a, O: AsRef<Path> + ?Sized, D: AsRef<Path> + ?Sized>(origin_f
     img.save(&new_path)?;
 
     Ok(new_path)
+}
+
+fn delete_original_file(file_path: &Path) -> Result<PathBuf, Box<dyn Error>>{
+    let current_dir_file_list = match get_dir_list(file_path.parent().unwrap()){
+        Ok(v) => v,
+        Err(e) => {
+            println!("Cannot get the file list in directory {}: {}", file_path.parent().unwrap().to_str().unwrap(), e);
+            return Err(Box::new(e));
+        }
+    };
+    let current_dir_file_list = current_dir_file_list.iter().map(|p| p.file_stem().unwrap()).collect::<Vec<_>>();
+    if !current_dir_file_list.contains(&file_path.file_stem().unwrap()){
+        println!("Connot delete! The file {} can be the original file. ", file_path.file_name().unwrap().to_str().unwrap());
+        return Err(Box::new(io::Error::new(ErrorKind::NotFound,
+                                           format!("Connot delete! The file {} can be the original file. ", file_path.file_name().unwrap().to_str().unwrap()))))
+    }
+
+    return
 }
 
 fn compress(resized_img_data: Vec<u8>, target_width: usize, target_height: usize, quality: f32) -> Result<Vec<u8>, Box<dyn Error>> {

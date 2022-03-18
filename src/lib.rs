@@ -6,7 +6,7 @@ use egui::{Context, Slider};
 use std::thread;
 use std::sync::mpsc;
 use image_compressor::folder_compress_with_channel;
-use zip_compressor::compress_root_dir_to_7z;
+use zip_archive::{archive_root_dir, archive_root_dir_with_sender};
 
 use crate::epi::{Frame, Storage};
 
@@ -32,9 +32,6 @@ impl epi::App for App {
                 if let Some(path) = rfd::FileDialog::new().pick_folder() {
                     self.origin_dir = Arc::new(path);
                 }
-                // self.complete_file_list.push(String::from(format!("{:?}", SystemTime::now()
-                //     .duration_since(UNIX_EPOCH)
-                //     .expect("Time went backwards"))));
             }
             let origin_dir = self.origin_dir.as_ref();
             ui.horizontal(|ui| {
@@ -83,21 +80,26 @@ impl epi::App for App {
 
                 let origin = Arc::clone(&self.origin_dir);
                 let dest = Arc::clone(&self.dest_dir);
-                let tx = self.tx.clone();
+                let compressor_tx = self.tx.clone();
+                let archive_tx = self.tx.clone();
                 let th_count = self.thread_count;
                 let z = self.to_zip;
                 thread::spawn(move || {
                     match folder_compress_with_channel((origin.deref()).to_path_buf(),
                                                        (dest.deref()).to_path_buf(),
                                                        th_count,
-                                                       tx.unwrap()) {
+                                                       compressor_tx.unwrap()) {
                         Ok(_) => {},
                         Err(e) => {
                             println!("Cannot compress the folder!: {}", e);
                         }
                     };
                     if z {
-                        match compress_root_dir_to_7z(&(dest.deref()).to_path_buf(), &(dest.deref()).to_path_buf(), th_count) {
+
+                        match archive_root_dir_with_sender(&(dest.deref()).to_path_buf(),
+                                                           &(dest.deref()).to_path_buf(),
+                                                           th_count,
+                                                           archive_tx.unwrap()) {
                             Ok(_) => {}
                             Err(e) => {
                                 println!("Cannot archive the folder!: {}", e);
@@ -135,7 +137,7 @@ impl epi::App for App {
     }
 
     fn name(&self) -> &str {
-        "My egui App"
+        "Image Compressor"
     }
 }
 

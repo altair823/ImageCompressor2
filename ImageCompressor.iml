@@ -6,12 +6,12 @@
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/gui/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/image_compressor/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/zip_compressor/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/zip_archive/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/test" />
       <excludeFolder url="file://$MODULE_DIR$/image_compressor/target" />
       <excludeFolder url="file://$MODULE_DIR$/gui/target" />
-      <excludeFolder url="file://$MODULE_DIR$/zip_compressor/target" />
+      <excludeFolder url="file://$MODULE_DIR$/zip_archive/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
