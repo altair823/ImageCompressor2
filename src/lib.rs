@@ -1,3 +1,4 @@
+mod file_io;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -5,17 +6,17 @@ use eframe::{epi, egui};
 use egui::{Context, Slider, TextEdit, Vec2};
 use std::thread;
 use std::sync::mpsc;
+use atomic_refcell::AtomicRefCell;
 use image_compressor::folder_compress_with_channel;
 use zip_archive::archive_root_dir_with_sender;
 
 use crate::epi::{Frame, Storage};
+use crate::file_io::{DirSet, DirType};
 
 #[derive(Default)]
 pub struct App{
+    dir_set: Arc<AtomicRefCell<DirSet>>,
     is_ui_enable: Arc<AtomicBool>,
-    origin_dir: Arc<Option<PathBuf>>,
-    dest_dir: Arc<Option<PathBuf>>,
-    archive_dir: Arc<Option<PathBuf>>,
     thread_count: u32,
     to_zip: bool,
     complete_file_list: Vec<String>,
@@ -47,19 +48,20 @@ impl epi::App for App {
                 ui.heading("Original folder");
                 if ui.button("select").clicked() {
                     if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                        self.origin_dir = Arc::new(Some(path));
+                        (*self.dir_set).borrow_mut().set_dir(DirType::Origin, path);
                     }
                 }
-                let origin_dir = self.origin_dir.as_ref();
+                let origin_dir = match (*self.dir_set).borrow().get_dir(DirType::Origin){
+                    Some(p) => p,
+                    None => PathBuf::from(""),
+                };
                 ui.horizontal(|ui| {
                     ui.label("Path:");
-                    ui.add_sized(ui.available_size(), egui::TextEdit::multiline(&mut match origin_dir.as_ref() {
-                        Some(s) => match s.to_str() {
+                    ui.add_sized(ui.available_size(), egui::TextEdit::multiline(&mut match origin_dir.to_str() {
                             Some(s) => s,
                             None => "",
-                        },
-                        None => "",
-                    }).interactive(false)
+                        }
+                    ).interactive(false)
                         .hint_text("Original folder"));
                 });
                 ui.separator();
@@ -68,19 +70,19 @@ impl epi::App for App {
                 ui.heading("Destination folder");
                 if ui.button("select").clicked() {
                     if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                        self.dest_dir = Arc::new(Some(path));
+                        (*self.dir_set).borrow_mut().set_dir(DirType::Destination, path);
                     }
                 }
-                let dest_dir = self.dest_dir.as_ref();
+                let dest_dir = match (*self.dir_set).borrow().get_dir(DirType::Destination) {
+                    Some(p) => p,
+                    None => PathBuf::from(""),
+                };
                 ui.horizontal(|ui| {
                     ui.label("Path:");
-                    ui.add_sized(ui.available_size(), egui::TextEdit::multiline(&mut match dest_dir.as_ref() {
-                        Some(s) => match s.to_str() {
+                    ui.add_sized(ui.available_size(), egui::TextEdit::multiline(&mut match dest_dir.to_str() {
                             Some(s) => s,
                             None => "",
-                        },
-                        None => "",
-                    }).interactive(false)
+                        }).interactive(false)
                         .hint_text("Destination folder"));
                 });
                 ui.separator();
@@ -97,19 +99,19 @@ impl epi::App for App {
                     ui.heading("Archive folder");
                     if ui.button("select").clicked() {
                         if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                            self.archive_dir = Arc::new(Some(path));
+                            (*self.dir_set).borrow_mut().set_dir(DirType::Archive, path);
                         }
                     }
-                    let archive_dir = self.archive_dir.as_ref();
+                    let archive_dir = match (*self.dir_set).borrow().get_dir(DirType::Archive){
+                        Some(p) => p,
+                        None => PathBuf::from("")
+                    };
                     ui.horizontal(|ui| {
                         ui.label("Path:");
-                        ui.add_sized(ui.available_size(), egui::TextEdit::multiline(&mut match archive_dir.as_ref() {
-                            Some(s) => match s.to_str() {
+                        ui.add_sized(ui.available_size(), egui::TextEdit::multiline(&mut match archive_dir.to_str() {
                                 Some(s) => s,
                                 None => "",
-                            },
-                            None => "",
-                        }).interactive(false)
+                            }).interactive(false)
                             .hint_text("Archive folder"));
                     });
                 }
@@ -119,15 +121,15 @@ impl epi::App for App {
                 ui.group(|ui| {
 
                     // Condition for compress
-                    match *self.origin_dir {
+                    match (*self.dir_set).borrow().get_dir(DirType::Origin) {
                         None => ui.set_enabled(false),
                         Some(_) => {
-                            match *self.dest_dir {
+                            match (*self.dir_set).borrow().get_dir(DirType::Destination) {
                                 None => ui.set_enabled(false),
                                 Some(_) => {
                                     match self.to_zip {
                                         true => {
-                                            match *self.archive_dir {
+                                            match (*self.dir_set).borrow().get_dir(DirType::Archive) {
                                                 None => ui.set_enabled(false),
                                                 Some(_) => ui.set_enabled(true),
                                             }
@@ -143,17 +145,15 @@ impl epi::App for App {
                     let compress_button = egui::Button::new("Compress");
                     if ui.add_sized(Vec2::new(ui.available_width(), 40.), compress_button).clicked() {
                         self.is_ui_enable.swap(false, Ordering::Relaxed);
-                        let origin = Arc::clone(&self.origin_dir);
-                        let dest = Arc::clone(&self.dest_dir);
-                        let archive = Arc::clone(&self.archive_dir);
+                        let dir_set = Arc::clone(&self.dir_set);
                         let is_ui_enable = Arc::clone(&self.is_ui_enable);
                         let compressor_tx = self.tx.clone();
                         let archive_tx = self.tx.clone();
                         let th_count = self.thread_count;
                         let z = self.to_zip;
                         thread::spawn(move || {
-                            match folder_compress_with_channel((*origin).as_ref().unwrap().to_path_buf(),
-                                                               (*dest).as_ref().unwrap().to_path_buf(),
+                            match folder_compress_with_channel((*dir_set).borrow().get_dir(DirType::Origin).unwrap(),
+                                                               (*dir_set).borrow().get_dir(DirType::Destination).unwrap(),
                                                                th_count,
                                                                compressor_tx.unwrap()) {
                                 Ok(_) => {
@@ -166,8 +166,8 @@ impl epi::App for App {
                                 }
                             };
                             if z {
-                                match archive_root_dir_with_sender(&(*dest).as_ref().unwrap().to_path_buf(),
-                                                                   &(*archive).as_ref().unwrap().to_path_buf(),
+                                match archive_root_dir_with_sender(&(*dir_set).borrow().get_dir(DirType::Destination).unwrap(),
+                                                                   &(*dir_set).borrow().get_dir(DirType::Archive).unwrap(),
                                                                    th_count,
                                                                    archive_tx.unwrap()) {
                                     Ok(_) => { is_ui_enable.swap(true, Ordering::Relaxed); }
@@ -207,6 +207,32 @@ impl epi::App for App {
         self.tx = Some(tx);
         self.thread_count = 1;
         self.is_ui_enable = Arc::new(AtomicBool::new(true));
+        let tx = self.tx.clone();
+        self.dir_set = Arc::new(AtomicRefCell::new(match DirSet::load_dir_history(){
+            Ok(dir_set) => {
+                if let Err(e) = tx.unwrap().send(String::from("Loading directory history complete!")) {
+                    println!("Massege passing error!: {}", e);
+                }
+                dir_set
+            },
+            Err(_) => {
+                match tx.unwrap().send(String::from("Cannot load directory save file!\nSet save file path with default.")) {
+                    Ok(_) => DirSet::new(),
+                    Err(e) => {
+                        println!("Massege passing error!: {}", e);
+                        DirSet::new()
+                    },
+                }
+            }
+        }));
+    }
+
+    fn on_exit_event(&mut self) -> bool {
+        match (*self.dir_set).borrow().save_dir_history(){
+            Ok(_) => {}
+            Err(e) => println!("Cannot save the directory history! : {}", e),
+        }
+        return true;
     }
 
     fn name(&self) -> &str {
