@@ -286,7 +286,7 @@ mod tests{
 
     #[test]
     fn delete_converted_file_test(){
-        let (_, test_origin_dir, test_dest_dir) = setup(7);
+        let (_, test_origin_dir, _) = setup(7);
         //fs::copy("original_images/file1.png", test_origin_dir.join("file1.png")).unwrap();
         fs::copy("original_images/file2.jpg", test_origin_dir.join("file2.jpg")).unwrap();
 

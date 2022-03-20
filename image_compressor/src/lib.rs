@@ -19,7 +19,7 @@ pub fn folder_compress_with_channel(root: PathBuf,
     match sender.send(format!("Total file count: {}", to_comp_file_list.len())) {
         Ok(_) => {},
         Err(e) => {
-            println!("Massege passing error!: {}", e);
+            println!("Message passing error!: {}", e);
         }
     }
 
@@ -36,7 +36,7 @@ pub fn folder_compress_with_channel(root: PathBuf,
         let arc_dest = Arc::clone(&arc_dest);
         let arc_queue = Arc::clone(&queue);
         let handle = thread::spawn(move || {
-            process_with_sender(arc_queue, &arc_dest, &arc_root, new_sender);
+            process_with_sender(arc_queue, &arc_root, &arc_dest, new_sender);
         });
         handles.push(handle);
     }
@@ -47,7 +47,7 @@ pub fn folder_compress_with_channel(root: PathBuf,
     match sender.send(String::from("Compress complete!")){
         Ok(_) => {},
         Err(e) => {
-            println!("Massege passing error!: {}", e);
+            println!("Message passing error!: {}", e);
         }
     };
     // let new_sender = mpsc::Sender::clone(&sender);
@@ -83,8 +83,8 @@ pub fn folder_compress(root: PathBuf, dest: PathBuf, thread_num: u32) -> Result<
 }
 
 fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
-                       dest_dir: &PathBuf,
                        root: &PathBuf,
+                       dest: &PathBuf,
                        sender: mpsc::Sender<String>){
     while !queue.is_empty() {
         match queue.pop() {
@@ -110,7 +110,7 @@ fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
                         continue;
                     }
                 };
-                let new_dest_dir = dest_dir.join(parent);
+                let new_dest_dir = dest.join(parent);
                 if !new_dest_dir.is_dir(){
                     match fs::create_dir_all(&new_dest_dir){
                         Ok(_) => {}
@@ -125,7 +125,7 @@ fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
                         match sender.send(format!("Compress complete! File: {}", p.file_name().unwrap().to_str().unwrap())){
                             Ok(_) => {},
                             Err(e) => {
-                                println!("Massege passing error!: {}", e);
+                                println!("Message passing error!: {}", e);
                             }
                         };
                     }
@@ -133,7 +133,7 @@ fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
                         match sender.send(e.deref().to_string()) {
                             Ok(_) => {},
                             Err(e) => {
-                                println!("Massege passing error!: {}", e);
+                                println!("Message passing error!: {}", e);
                             }
                         };
                     }

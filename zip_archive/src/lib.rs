@@ -4,9 +4,10 @@ use std::error::Error;
 use std::io;
 use std::io::ErrorKind;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 use subprocess::Exec;
-use crossbeam::{queue, thread};
-use crossbeam::queue::ArrayQueue;
+use crossbeam_queue::SegQueue;
+use std::thread;
 use image_compressor::crawler::get_dir_list;
 
 fn get_7z_executable_path() -> Result<PathBuf, Box<dyn Error>>{
@@ -60,79 +61,81 @@ fn compress_a_dir_to_7z(origin: &Path, dest: &Path, root: &Path) ->Result<PathBu
     return Ok(zip_path);
 }
 
-fn process(queue: &ArrayQueue<PathBuf>, dest_dir: &PathBuf, root: &PathBuf){
+fn process(queue: Arc<SegQueue<PathBuf>>,
+           root: &PathBuf,
+           dest: &PathBuf){
     while !queue.is_empty() {
         let dir = match queue.pop() {
             None => break,
             Some(d) => d,
         };
-        match compress_a_dir_to_7z(dir.as_path(), &dest_dir, &root){
+        match compress_a_dir_to_7z(dir.as_path(), &dest, &root){
             Ok(_) => {}
             Err(e) => println!("Error occurred! : {}", e),
         }
     }
 }
 
-fn process_with_sender(queue: &ArrayQueue<PathBuf>,
-                       dest_dir: &PathBuf,
+fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
                        root: &PathBuf,
+                       dest: &PathBuf,
                        sender: Sender<String>){
     while !queue.is_empty() {
         let dir = match queue.pop() {
             None => break,
             Some(d) => d,
         };
-        match compress_a_dir_to_7z(dir.as_path(), &dest_dir, &root){
+        match compress_a_dir_to_7z(dir.as_path(), &dest, &root){
             Ok(p) => {
                 match sender.send(format!("7z archiving complete: {}", p.to_str().unwrap())){
                     Ok(_) => {},
-                    Err(e) => println!("Massege passing error!: {}", e),
+                    Err(e) => println!("Message passing error!: {}", e),
                 }
             }
             Err(e) => {
                 match sender.send(format!("7z archiving error occured!: {}", e)) {
                     Ok(_) => {},
-                    Err(e) => println!("Massege passing error!: {}", e),
+                    Err(e) => println!("Message passing error!: {}", e),
                 }
             },
         };
     }
 }
 
-pub fn archive_root_dir(root: &Path, dest: &Path, thread_count: u32) -> Result<(), Box<dyn Error>>{
-    let to_7z_file_list = match get_dir_list(root){
-        Ok(s) => s,
-        Err(e) => {
-            println!("Cannot extract the list of directories in {} : {}", root.to_str().unwrap(), e);
-            return Err(Box::new(e));
-        }
-    };
+pub fn archive_root_dir(root: PathBuf,
+                        dest: PathBuf,
+                        thread_count: u32) -> Result<(), Box<dyn Error>>{
+    let to_7z_file_list = get_dir_list(&root)?;
 
-    let queue = queue::ArrayQueue::new(to_7z_file_list.len());
+    let queue = Arc::new(SegQueue::new());
     for dir in to_7z_file_list{
-        match queue.push(dir){
-            Ok(_) => {}
-            Err(e) => println!("Cannot push the directory in the queue. : {}", e.to_str().unwrap()),
-        };
+        queue.push(dir);
     }
 
-    //process(&queue, &dest.to_path_buf(), &root.to_path_buf());
-    thread::scope(|s|{
-        for _ in 0..thread_count{
-            s.spawn(|_| {
-                process(&queue, &dest.to_path_buf(), &root.to_path_buf());
-            });
-        }
-    }).unwrap();
+    let mut handles = Vec::new();
+    let arc_root = Arc::new(root);
+    let arc_dest = Arc::new(dest);
+    for _ in 0..thread_count {
+        let arc_queue = Arc::clone(&queue);
+        let arc_root = Arc::clone(&arc_root);
+        let arc_dest = Arc::clone(&arc_dest);
+        let handle = thread::spawn(move || {
+            process(arc_queue, &arc_root, &arc_dest)
+        });
+        handles.push(handle);
+    }
+    for h in handles{
+        h.join().unwrap();
+    }
 
     Ok(())
 }
 
-pub fn archive_root_dir_with_sender(root: &Path,
-                                    dest: &Path,
+pub fn archive_root_dir_with_sender(root: PathBuf,
+                                    dest: PathBuf,
                                     thread_count: u32,
                                     sender: Sender<String>) -> Result<(), Box<dyn Error>>{
-    let to_7z_file_list = match get_dir_list(root){
+    let to_7z_file_list = match get_dir_list(&root){
         Ok(s) => s,
         Err(e) => {
             println!("Cannot extract the list of directories in {} : {}", root.to_str().unwrap(), e);
@@ -142,30 +145,35 @@ pub fn archive_root_dir_with_sender(root: &Path,
 
     match sender.send(format!("Total archive directory count: {}", to_7z_file_list.len())){
         Ok(_) => {},
-        Err(e) => println!("Massege passing error!: {}", e),
+        Err(e) => println!("Message passing error!: {}", e),
     }
 
-    let queue = queue::ArrayQueue::new(to_7z_file_list.len());
+    let queue = Arc::new(SegQueue::new());
     for dir in to_7z_file_list{
-        match queue.push(dir){
-            Ok(_) => {}
-            Err(e) => println!("Cannot push the directory in the queue. : {}", e.to_str().unwrap()),
-        };
+        queue.push(dir);
     }
 
-    //process(&queue, &dest.to_path_buf(), &root.to_path_buf());
-    thread::scope(|s|{
-        for _ in 0..thread_count{
-            let new_sender = sender.clone();
-            s.spawn(|_| {
-                process_with_sender(&queue, &dest.to_path_buf(), &root.to_path_buf(), new_sender);
-            });
-        }
-    }).unwrap();
+    let mut handles = Vec::new();
+    let arc_root = Arc::new(root);
+    let arc_dest = Arc::new(dest);
+    for _ in 0..thread_count {
+        let arc_queue = Arc::clone(&queue);
+        let arc_root = Arc::clone(&arc_root);
+        let arc_dest = Arc::clone(&arc_dest);
+        let new_sender = sender.clone();
+        let handle = thread::spawn(move || {
+            process_with_sender(arc_queue, &arc_root, &arc_dest, new_sender);
+        });
+        handles.push(handle);
+    }
+
+    for h in handles{
+        h.join().unwrap();
+    }
 
     match sender.send(String::from("Archiving Complete!")){
         Ok(_) => {},
-        Err(e) => println!("Massege passing error!: {}", e),
+        Err(e) => println!("Message passing error!: {}", e),
     }
     Ok(())
 }
