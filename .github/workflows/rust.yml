@@ -13,6 +13,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - run: apt-get install atk-dev gtk
       - uses: actions-rs/cargo@v1
         with:
           command: check
