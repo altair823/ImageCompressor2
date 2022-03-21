@@ -68,6 +68,7 @@ impl Default for ProgramData {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
     use crate::DEFAULT_SAVE_FILE_PATH;
     use super::*;
 
@@ -83,7 +84,7 @@ mod tests {
     fn save_test(){
         let dir_set = make_dir_set();
         dir_set.save( DEFAULT_SAVE_FILE_PATH).unwrap();
-        //assert!(dir_set.save_file_dir.unwrap().join(DIR_HISTORY_FILE_NAME).is_file())
+        assert!(Path::new(DEFAULT_SAVE_FILE_PATH).is_file())
     }
 
     #[test]

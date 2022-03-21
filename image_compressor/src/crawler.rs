@@ -1,3 +1,15 @@
+//! A module containing functions that return a list of files or folders.
+//!
+//! # Examples
+//!
+//! `get_file_list` example.
+//! ```
+//! use std::path::PathBuf;
+//! use image_compressor::crawler::get_file_list;
+//! let root = PathBuf::from("root");
+//! get_file_list(root);
+//! ```
+
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -42,7 +54,7 @@ mod tests {
 
     use super::*;
     use std::{io, fs};
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     struct DirData{
         origin: PathBuf,
@@ -113,12 +125,5 @@ mod tests {
                               PathBuf::from("test_original_images/file8.txt")].sort();
         assert_eq!(test_vec, expect_vec);
         cleanup();
-    }
-
-    #[test]
-    fn get_dir_list_test(){
-        setup();
-        let dir_list = get_dir_list("test_original_images");
-        println!("{:?}", dir_list);
     }
 }

@@ -1,3 +1,48 @@
+//! # Image compressor
+//!
+//! `image_compressor` is a library that compresses images with multiple threads.
+//! See [image](https://crates.io/crates/image) crate for check the extention that supported.
+//!
+//! # Examples
+//! `folder_compress_with_sender` example.
+//!
+//! The function compress all images in given origin folder with multithread at the same time,
+//! and wait until everything is done. With `mpsc::Sender` (argument `tx` in this example),
+//! the process running in this function will dispatch a message indicating whether image compression is complete.
+//! ```
+//! use std::path::PathBuf;
+//! use std::sync::mpsc;
+//! use image_compressor::folder_compress_with_sender;
+//!
+//! let origin = PathBuf::from("origin_dir");
+//! let dest = PathBuf::from("dest_dir");
+//! let thread_count = 4;
+//! let (tx, tr) = mpsc::channel();
+//! match folder_compress_with_sender(origin, dest, thread_count, tx.clone()) {
+//!     Ok(_) => {},
+//!     Err(e) => println!("Cannot compress the folder!: {}", e),
+//! }
+//! ```
+//!
+//! `folder_compress` example.
+//!
+//! The function compress all images in given origin folder with multithread at the same time,
+//! and wait until everything is done. This function does not send any messages.
+//! ```
+//! use std::path::PathBuf;
+//! use std::sync::mpsc;
+//! use image_compressor::folder_compress;
+//!
+//! let origin = PathBuf::from("origin_dir");
+//! let dest = PathBuf::from("dest_dir");
+//! let thread_count = 4;
+//! match folder_compress(origin, dest, thread_count){
+//!     Ok(_) => {},
+//!     Err(e) => println!("Cannot compress the folder!: {}", e),
+//! }
+//! ```
+//!
+
 use std::error::Error;
 use std::fs;
 use std::ops::Deref;
@@ -11,10 +56,29 @@ use crossbeam_queue::SegQueue;
 pub mod crawler;
 pub mod compressor;
 
-pub fn folder_compress_with_channel(root: PathBuf,
-                                    dest: PathBuf,
-                                    thread_num: u32,
-                                    sender: mpsc::Sender<String>) -> Result<(), Box<dyn Error>> {
+/// A folder compress function with mpsc::Sender.
+///
+/// The function compress all images in given origin folder with multithread at the same time,
+/// and wait until everything is done. With `mpsc::Sender` (argument `tx` in this example),
+/// the process running in this function will dispatch a message indicating whether image compression is complete.
+/// ```
+/// use std::path::PathBuf;
+/// use std::sync::mpsc;
+/// use image_compressor::folder_compress_with_sender;
+///
+/// let origin = PathBuf::from("origin_dir");
+/// let dest = PathBuf::from("dest_dir");
+/// let thread_count = 4;
+/// let (tx, tr) = mpsc::channel();
+/// match folder_compress_with_sender(origin, dest, thread_count, tx.clone()) {
+///     Ok(_) => {},
+///     Err(e) => println!("Cannot compress the folder!: {}", e),
+/// }
+/// ```
+pub fn folder_compress_with_sender(root: PathBuf,
+                                   dest: PathBuf,
+                                   thread_num: u32,
+                                   sender: mpsc::Sender<String>) -> Result<(), Box<dyn Error>> {
     let to_comp_file_list = get_file_list(&root)?;
     match sender.send(format!("Total file count: {}", to_comp_file_list.len())) {
         Ok(_) => {},
@@ -55,7 +119,23 @@ pub fn folder_compress_with_channel(root: PathBuf,
     return Ok(());
 }
 
-
+/// A folder compress function.
+///
+/// The function compress all images in given origin folder with multithread at the same time,
+/// and wait until everything is done. This function does not send any messages.
+/// ```
+/// use std::path::PathBuf;
+/// use std::sync::mpsc;
+/// use image_compressor::folder_compress;
+///
+/// let origin = PathBuf::from("origin_dir");
+/// let dest = PathBuf::from("dest_dir");
+/// let thread_count = 4;
+/// match folder_compress(origin, dest, thread_count){
+///     Ok(_) => {},
+///     Err(e) => println!("Cannot compress the folder!: {}", e),
+/// }
+/// ```
 pub fn folder_compress(root: PathBuf, dest: PathBuf, thread_num: u32) -> Result<(), Box<dyn Error>>{
     let to_comp_file_list = get_file_list(&root)?;
     let queue = Arc::new(SegQueue::new());

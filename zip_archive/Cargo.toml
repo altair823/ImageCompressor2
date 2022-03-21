@@ -9,6 +9,3 @@ edition = "2021"
 subprocess = "0.2.8"
 crossbeam-queue = "0.3.5"
 image_compressor = {path = "../image_compressor"}
-
-[dev-dependencies]
-fs_extra = "1.2.0"

@@ -99,11 +99,13 @@ fn resize(path: &Path, resize_ratio: f32) -> Result<(Vec<u8>, usize, usize), Box
 ///
 /// # Examples
 /// ```
-/// compress_to_jpg(test_origin_dir.join("file4.jpg"), test_dest_dir).unwrap();
+/// use std::path::PathBuf;
+/// use image_compressor::compressor::compress_to_jpg;
 ///
-/// assert!(test_dest_path.is_file());
-/// println!("Original file size: {}, Compressed file size: {}",
-///     &test_origin_path.metadata().unwrap().len(), test_dest_path.metadata().unwrap().len());
+/// let test_origin_dir = PathBuf::from("test_origin").join("file1.jpg");
+/// let test_dest_dir = PathBuf::from("test_dest");
+///
+/// compress_to_jpg(&test_origin_dir, &test_dest_dir);
 /// ```
 pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, target_dir: D) -> Result<PathBuf, Box<dyn Error>> {
     let origin_file_path = origin_file_path.as_ref();
@@ -279,7 +281,7 @@ mod tests{
         let (_, test_origin_dir, test_dest_dir) = setup(3);
         fs::copy("original_images/file7.txt", test_origin_dir.join("file7.txt")).unwrap();
 
-        compress_to_jpg(test_origin_dir.join("file7.txt"), &test_dest_dir).unwrap();
+        assert!(compress_to_jpg(test_origin_dir.join("file7.txt"), &test_dest_dir).is_err());
         assert!(test_dest_dir.join("file7.txt").is_file());
         cleanup(3);
     }

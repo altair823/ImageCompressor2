@@ -9,7 +9,7 @@ use eframe::{epi, egui};
 use egui::{Context, Slider, TextEdit, Vec2};
 use std::thread;
 use std::sync::mpsc;
-use image_compressor::folder_compress_with_channel;
+use image_compressor::folder_compress_with_sender;
 use zip_archive::archive_root_dir_with_sender;
 
 use crate::epi::{Frame, Storage};
@@ -167,10 +167,10 @@ impl epi::App for App {
                         let th_count = self.thread_count;
                         let z = self.to_zip;
                         thread::spawn(move || {
-                            match folder_compress_with_channel((*origin).as_ref().unwrap().to_path_buf(),
-                                                               (*dest).as_ref().unwrap().to_path_buf(),
-                                                               th_count,
-                                                               compressor_tx.unwrap()) {
+                            match folder_compress_with_sender((*origin).as_ref().unwrap().to_path_buf(),
+                                                              (*dest).as_ref().unwrap().to_path_buf(),
+                                                              th_count,
+                                                              compressor_tx.unwrap()) {
                                 Ok(_) => {
                                     if !z {
                                         is_ui_enable.swap(true, Ordering::Relaxed);
@@ -292,14 +292,3 @@ impl epi::App for App {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::App;
-
-    #[test]
-    fn it_works() {
-        let app = App::default();
-        let native_options = eframe::NativeOptions::default();
-        eframe::run_native(Box::new(app), native_options);
-    }
-}
