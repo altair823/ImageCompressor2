@@ -1,13 +1,14 @@
-//! A module containing functions that return a list of files or folders.
+//! Containing functions that return a list of files or folders.
 //!
 //! # Examples
 //!
 //! `get_file_list` example.
 //! ```
 //! use std::path::PathBuf;
-//! use image_compressor::crawler::get_file_list;
+//! use image_compressor::crawler::{get_file_list, get_dir_list};
 //! let root = PathBuf::from("root");
-//! get_file_list(root);
+//! get_file_list(&root);
+//! get_dir_list(&root);
 //! ```
 
 use std::io;
@@ -36,6 +37,7 @@ pub fn get_file_list<O: AsRef<Path>>(root: O) -> io::Result<Vec<PathBuf>> {
     Ok(image_list)
 }
 
+/// Get all directories list in the rood directory. Not recursive. 
 pub fn get_dir_list<O: AsRef<Path>>(root: O) -> io::Result<Vec<PathBuf>> {
     let cur_list: Vec<PathBuf> = root.as_ref().read_dir()?
         .map(|entry| entry.unwrap().path())

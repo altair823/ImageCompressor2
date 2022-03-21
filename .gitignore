@@ -1,6 +1,13 @@
-/target
+/target/
+/image_compressor/target/
+/image_compressor/test_*
+/zip_archive/arc/
+/zip_archive/target
+/zip_archive/test_*
 /test/
 /.idea/
+/data/
 7z.exe
 7zz
 7zzs
+.DS_Store

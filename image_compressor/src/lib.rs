@@ -56,7 +56,7 @@ use crossbeam_queue::SegQueue;
 pub mod crawler;
 pub mod compressor;
 
-/// A folder compress function with mpsc::Sender.
+/// Folder compress function with mpsc::Sender.
 ///
 /// The function compress all images in given origin folder with multithread at the same time,
 /// and wait until everything is done. With `mpsc::Sender` (argument `tx` in this example),
@@ -119,7 +119,7 @@ pub fn folder_compress_with_sender(root: PathBuf,
     return Ok(());
 }
 
-/// A folder compress function.
+/// Folder compress function.
 ///
 /// The function compress all images in given origin folder with multithread at the same time,
 /// and wait until everything is done. This function does not send any messages.

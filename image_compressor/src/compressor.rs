@@ -1,3 +1,20 @@
+//! Containing functions that compress a image. 
+//! 
+//! # Compressor
+//! 
+//! The `compress_to_jpg` function resizes the given image and compresses it by a certain percentage. 
+//! # Examples
+//! ```
+//! use std::path::PathBuf;
+//! use image_compressor::compressor::compress_to_jpg;
+//!
+//! let origin_dir = PathBuf::from("origin").join("file1.jpg");
+//! let dest_dir = PathBuf::from("dest");
+//!
+//! compress_to_jpg(&origin_dir, &dest_dir);
+//! ```
+
+
 use std::error::Error;
 use std::ffi::OsStr;
 use std::{fs, io};
@@ -91,6 +108,8 @@ fn resize(path: &Path, resize_ratio: f32) -> Result<(Vec<u8>, usize, usize), Box
     Ok((resized_img.to_rgb8().to_vec(), resized_img.width() as usize, resized_img.height() as usize))
 }
 
+/// Compress a file.
+/// 
 /// Compress the given image file and save it to target_dir.
 /// If the extension of the given image file is not jpg or jpeg, then convert the image to jpg file.
 /// If the module can not open the file, just copy it to target_dir.
@@ -102,10 +121,10 @@ fn resize(path: &Path, resize_ratio: f32) -> Result<(Vec<u8>, usize, usize), Box
 /// use std::path::PathBuf;
 /// use image_compressor::compressor::compress_to_jpg;
 ///
-/// let test_origin_dir = PathBuf::from("test_origin").join("file1.jpg");
-/// let test_dest_dir = PathBuf::from("test_dest");
+/// let origin_dir = PathBuf::from("origin").join("file1.jpg");
+/// let dest_dir = PathBuf::from("dest");
 ///
-/// compress_to_jpg(&test_origin_dir, &test_dest_dir);
+/// compress_to_jpg(&origin_dir, &dest_dir);
 /// ```
 pub fn compress_to_jpg<O: AsRef<Path>, D: AsRef<Path>>(origin_file_path: O, target_dir: D) -> Result<PathBuf, Box<dyn Error>> {
     let origin_file_path = origin_file_path.as_ref();
