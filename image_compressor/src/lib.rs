@@ -45,10 +45,9 @@
 
 use std::error::Error;
 use std::fs;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, mpsc};
-use compressor::compress_to_jpg;
+use compressor::Compressor;
 use crawler::get_file_list;
 use std::thread;
 use crossbeam_queue::SegQueue;
@@ -76,9 +75,9 @@ pub mod compressor;
 /// }
 /// ```
 pub fn folder_compress_with_sender(root: PathBuf,
-                                   dest: PathBuf,
-                                   thread_num: u32,
-                                   sender: mpsc::Sender<String>) -> Result<(), Box<dyn Error>> {
+    dest: PathBuf,
+    thread_num: u32,
+    sender: mpsc::Sender<String>) -> Result<(), Box<dyn Error>> {
     let to_comp_file_list = get_file_list(&root)?;
     match sender.send(format!("Total file count: {}", to_comp_file_list.len())) {
         Ok(_) => {},
@@ -151,7 +150,7 @@ pub fn folder_compress(root: PathBuf, dest: PathBuf, thread_num: u32) -> Result<
         let arc_dest = Arc::clone(&arc_dest);
         let arc_queue = Arc::clone(&queue);
         let handle = thread::spawn(move || {
-            process(arc_queue, &arc_dest, &arc_root);
+            process(arc_queue, &arc_root, &arc_dest);
         });
         handles.push(handle);
     }
@@ -200,7 +199,16 @@ fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
                         }
                     };
                 }
-                match compress_to_jpg(&file, new_dest_dir){
+                let compressor = Compressor::new(&file, new_dest_dir, |_, _, file_size|{
+                    return match file_size{
+                        file_size if file_size > 5000000 => (60., 0.5),
+                        file_size if file_size > 1000000 => (65., 0.6),
+                        file_size if file_size > 500000 => (70., 0.6),
+                        file_size if file_size > 300000 => (75., 0.7),
+                        file_size if file_size > 100000 => (80., 0.7),
+                        _ => (85., 0.8),
+                };});
+                match compressor.compress_to_jpg(){
                     Ok(p) => {
                         match sender.send(format!("Compress complete! File: {}", p.file_name().unwrap().to_str().unwrap())){
                             Ok(_) => {},
@@ -210,7 +218,7 @@ fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
                         };
                     }
                     Err(e) => {
-                        match sender.send(e.deref().to_string()) {
+                        match sender.send(e.to_string()) {
                             Ok(_) => {},
                             Err(e) => {
                                 println!("Message passing error!: {}", e);
@@ -223,7 +231,9 @@ fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
     }
 }
 
-fn process(queue: Arc<SegQueue<PathBuf>>, dest_dir: &PathBuf, root: &PathBuf){
+fn process(queue: Arc<SegQueue<PathBuf>>, 
+    root: &PathBuf,
+    dest: &PathBuf){
     while !queue.is_empty() {
         match queue.pop() {
             None => break,
@@ -248,7 +258,7 @@ fn process(queue: Arc<SegQueue<PathBuf>>, dest_dir: &PathBuf, root: &PathBuf){
                         continue;
                     }
                 };
-                let new_dest_dir = dest_dir.join(parent);
+                let new_dest_dir = dest.join(parent);
                 if !new_dest_dir.is_dir(){
                     match fs::create_dir_all(&new_dest_dir){
                         Ok(_) => {}
@@ -258,7 +268,16 @@ fn process(queue: Arc<SegQueue<PathBuf>>, dest_dir: &PathBuf, root: &PathBuf){
                         }
                     };
                 }
-                match compress_to_jpg(&file, new_dest_dir){
+                let compressor = Compressor::new(&file, new_dest_dir, |_, _, file_size|{
+                    return match file_size{
+                        file_size if file_size > 5000000 => (60., 0.5),
+                        file_size if file_size > 1000000 => (65., 0.6),
+                        file_size if file_size > 500000 => (70., 0.6),
+                        file_size if file_size > 300000 => (75., 0.7),
+                        file_size if file_size > 100000 => (80., 0.7),
+                        _ => (85., 0.8),
+                };});
+                match compressor.compress_to_jpg(){
                     Ok(_) => {
                         println!("Compress complete! File: {}", file_name);
                     }
@@ -274,8 +293,6 @@ fn process(queue: Arc<SegQueue<PathBuf>>, dest_dir: &PathBuf, root: &PathBuf){
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use fs_extra::dir;
-    use fs_extra::dir::CopyOptions;
     use super::*;
 
     fn setup(test_num: i32) -> (i32, PathBuf, PathBuf){

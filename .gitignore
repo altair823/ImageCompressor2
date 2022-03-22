@@ -6,6 +6,7 @@
 /zip_archive/test_*
 /test/
 /.idea/
+/.vscode/
 /data/
 7z.exe
 7zz
