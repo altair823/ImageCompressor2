@@ -15,6 +15,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 /// Find all files in the root directory in a recursive way.
+/// The hidden files started with `.` will be not inclused in result.
 pub fn get_file_list<O: AsRef<Path>>(root: O) -> io::Result<Vec<PathBuf>> {
     let mut image_list: Vec<PathBuf> = Vec::new();
     let mut file_list: Vec<PathBuf> = root.as_ref().read_dir()?
@@ -28,7 +29,7 @@ pub fn get_file_list<O: AsRef<Path>>(root: O) -> io::Result<Vec<PathBuf>> {
                 file_list.push(component.unwrap().path());
             }
         }
-        else if file_list[i].file_name().unwrap() != ".DS_Store" {
+        else if &file_list[i].file_name().unwrap().to_str().unwrap()[..1] != "." {
             image_list.push(file_list[i].to_path_buf());
         }
         i += 1;
@@ -55,6 +56,7 @@ pub fn get_dir_list<O: AsRef<Path>>(root: O) -> io::Result<Vec<PathBuf>> {
 mod tests {
 
     use super::*;
+    use std::ffi::OsStr;
     use std::{io, fs};
     use std::path::{Path, PathBuf};
 

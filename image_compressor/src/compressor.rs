@@ -7,11 +7,12 @@
 //! ```
 //! use std::path::PathBuf;
 //! use image_compressor::compressor::Compressor;
+//! use image_compressor::Factor;
 //!
 //! let origin_dir = PathBuf::from("origin").join("file1.jpg");
 //! let dest_dir = PathBuf::from("dest");
 //!
-//! let compressor = Compressor::new(origin_dir, dest_dir, |width, height, file_size| {return (75., 0.7)});
+//! let compressor = Compressor::new(origin_dir, dest_dir, |width, height, file_size| {return Factor::new(75., 0.7)});
 //! compressor.compress_to_jpg();
 //! ```
 
@@ -58,12 +59,65 @@ fn delete_converted_file<O: AsRef<Path>>(file_path: O) -> Result<O, Box<dyn Erro
         Ok(file_path)
     }
 
+/// Factor struct that used for setting quality and resize ratio in the new image.
+/// 
+/// The [`Compressor`] and [`FolderCompressor`](super::FolderCompressor) need a function pointer that
+/// calculate and return the `Factor` for compressing images.
+/// 
+/// So, to create a new `Compressor` or `FolderCompressor` instance 
+/// you need to define a new function or closure that calculates and returns a `Factor` instance
+/// based on the size of image(width and height) and file size. 
+/// 
+/// The recommended range of quality is 60 to 80.
+pub struct Factor{
+
+    /// Quality of the new compressed image.
+    /// Values range from 0 to 100 in float.
+    quality: f32,
+
+    /// Ratio for resize the new compressed image. 
+    /// Values range from 0 to 1 in float. 
+    size_ratio: f32,
+}
+
+impl Factor {
+
+    /// Create a new `Factor` instance.
+    /// The `quality` range from 0 to 100 in float, 
+    /// and `size_ratio` range from 0 to 1 in float. 
+    /// 
+    /// # Panics
+    /// 
+    /// - If the quality value is 0 or less.
+    /// - If the quality value exceeds 100.
+    /// - If the size ratio value is 0 or less.
+    /// - If the size ratio value exceeds 1.
+    pub fn new(quality: f32, size_ratio: f32) -> Self{
+        if (quality > 0. && quality <= 100.) && (size_ratio > 0. && size_ratio <= 1.){
+            Factor { quality: quality, size_ratio: size_ratio }
+        }
+        else {
+            panic!("Wrong Factor argument!");
+        }
+    }
+
+    /// Getter for `quality` of `Factor`.
+    pub fn quality(&self) -> f32{
+        self.quality
+    }
+
+    /// Getter for `size_ratio` of `Factor`.
+    pub fn size_ratio(&self) -> f32{
+        self.size_ratio
+    }
+}
+
 /// Compressor struct.
 /// 
 pub struct Compressor<O: AsRef<Path>, D: AsRef<Path>>{
-    calculate_quality_and_size: fn(u32, u32, u64) -> (f32, f32),
-    original_dir: O,
-    destination_dir: D,
+    calculate_quality_and_size: fn(u32, u32, u64) -> Factor,
+    original_path: O,
+    destination_path: D,
 }
 
 impl<O: AsRef<Path>, D: AsRef<Path>> Compressor<O, D> {
@@ -71,25 +125,27 @@ impl<O: AsRef<Path>, D: AsRef<Path>> Compressor<O, D> {
     /// Create a new compressor. 
     /// 
     /// The new `Compressor` instance needs a function to calculate quality and scaling factor of the new compressed image.
+    /// For more information of `cal_factor_func` parameter, please check the [`Factor`] struct. 
     /// 
     /// # Examples
     /// ```
     /// use std::path::PathBuf;
     /// use image_compressor::compressor::Compressor;
+    /// use image_compressor::Factor;
     /// 
     /// let origin_dir = PathBuf::from("origin").join("file1.jpg");
     /// let dest_dir = PathBuf::from("dest");
     /// 
-    /// let compressor = Compressor::new(origin_dir, dest_dir, |_, _, _| {return (75., 0.7)});
+    /// let compressor = Compressor::new(origin_dir, dest_dir, |width, height, file_size| {return Factor::new(75., 0.7)});
     /// ```
-    pub fn new(origin_dir: O, dest_dir: D, calculator: fn(u32, u32, u64) -> (f32, f32)) -> Self{
-        Compressor { calculate_quality_and_size: calculator, original_dir: origin_dir, destination_dir: dest_dir }
+    pub fn new(origin_dir: O, dest_dir: D, cal_factor_func: fn(u32, u32, u64)->Factor) -> Self{
+        Compressor { calculate_quality_and_size: cal_factor_func, original_path: origin_dir, destination_path: dest_dir }
     }
 
     fn convert_to_jpg(&self) -> Result<PathBuf, Box<dyn Error>>{
-        let img = image::open(&self.original_dir)?;
-        let stem = self.original_dir.as_ref().file_stem().unwrap();
-        let mut new_path = match self.original_dir.as_ref().parent(){
+        let img = image::open(&self.original_path)?;
+        let stem = self.original_path.as_ref().file_stem().unwrap();
+        let mut new_path = match self.original_path.as_ref().parent(){
             Some(s) => s,
             None => return Err(Box::new(io::Error::new(io::ErrorKind::BrokenPipe, "Cannot get parent directory!"))),
         }
@@ -153,16 +209,17 @@ impl<O: AsRef<Path>, D: AsRef<Path>> Compressor<O, D> {
     /// ```
     /// use std::path::PathBuf;
     /// use image_compressor::compressor::Compressor;
+    /// use image_compressor::Factor;
     ///
     /// let origin_dir = PathBuf::from("origin").join("file1.jpg");
     /// let dest_dir = PathBuf::from("dest");
     ///
-    /// let compressor = Compressor::new(origin_dir, dest_dir, |width, height, file_size| {return (75., 0.7)});
+    /// let compressor = Compressor::new(origin_dir, dest_dir, |width, height, file_size| {return Factor::new(75., 0.7)});
     /// compressor.compress_to_jpg();
     /// ```
     pub fn compress_to_jpg(&self) -> Result<PathBuf, Box<dyn Error>> {
-        let origin_file_path = self.original_dir.as_ref();
-        let target_dir = self.destination_dir.as_ref();
+        let origin_file_path = self.original_path.as_ref();
+        let target_dir = self.destination_path.as_ref();
 
         let file_name = match origin_file_path.file_name(){
             Some(e) => match e.to_str(){
@@ -205,7 +262,7 @@ impl<O: AsRef<Path>, D: AsRef<Path>> Compressor<O, D> {
                 },
             };
         }else {
-            current_file = self.original_dir.as_ref().to_path_buf();
+            current_file = self.original_path.as_ref().to_path_buf();
         }
 
 
@@ -218,10 +275,10 @@ impl<O: AsRef<Path>, D: AsRef<Path>> Compressor<O, D> {
             Err(_) => 0,
         };
 
-        let (quality, size_ratio) = (self.calculate_quality_and_size)(width, height, file_size);
+        let factor = (self.calculate_quality_and_size)(width, height, file_size);
 
-        let (resized_img_data, target_width, target_height) = self.resize(origin_file_path, size_ratio)?;
-        let compressed_img_data = self.compress(resized_img_data, target_width, target_height, quality)?;
+        let (resized_img_data, target_width, target_height) = self.resize(origin_file_path, factor.size_ratio())?;
+        let compressed_img_data = self.compress(resized_img_data, target_width, target_height, factor.quality())?;
 
 
         let mut file = BufWriter::new(File::create(&target_file)?);

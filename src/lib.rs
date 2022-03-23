@@ -9,7 +9,7 @@ use eframe::{epi, egui};
 use egui::{Context, Slider, TextEdit, Vec2};
 use std::thread;
 use std::sync::mpsc;
-use image_compressor::folder_compress_with_sender;
+use image_compressor::FolderCompressor;
 use zip_archive::archive_root_dir_with_sender;
 
 use crate::epi::{Frame, Storage};
@@ -167,10 +167,9 @@ impl epi::App for App {
                         let th_count = self.thread_count;
                         let z = self.to_zip;
                         thread::spawn(move || {
-                            match folder_compress_with_sender((*origin).as_ref().unwrap().to_path_buf(),
-                                                              (*dest).as_ref().unwrap().to_path_buf(),
-                                                              th_count,
-                                                              compressor_tx.unwrap()) {
+                            let mut compressor = FolderCompressor::new((*origin).as_ref().unwrap().to_path_buf(), (*dest).as_ref().unwrap().to_path_buf());
+                            compressor.set_thread_count(th_count);
+                            match compressor.folder_compress_with_sender(compressor_tx.unwrap()) {
                                 Ok(_) => {
                                     if !z {
                                         is_ui_enable.swap(true, Ordering::Relaxed);
