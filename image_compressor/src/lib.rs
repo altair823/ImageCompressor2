@@ -16,7 +16,7 @@
 //! 
 //! # Examples
 //! 
-//! `folder_compress` example.
+//! `FolderCompressor` and its `compress` function example.
 //!
 //! The function compress all images in given origin folder with multithread at the same time,
 //! and wait until everything is done. This function does not using any `mpsc::Sender`.
@@ -30,16 +30,16 @@
 //! let dest = PathBuf::from("dest_dir");       // destination directory path
 //! let thread_count = 4;                       // number of threads
 //! 
-//! let mut folder_compressor = FolderCompressor::new(origin, dest);
-//! folder_compressor.set_cal_func(|width, height, file_size| {return Factor::new(75., 0.7)});
-//! folder_compressor.set_thread_count(4);
-//! match folder_compressor.compress(){
+//! let mut comp = FolderCompressor::new(origin, dest);
+//! comp.set_cal_func(|width, height, file_size| {return Factor::new(75., 0.7)});
+//! comp.set_thread_count(4);
+//! match comp.compress(){
 //!     Ok(_) => {},
 //!     Err(e) => println!("Cannot compress the folder!: {}", e),
 //! }
 //! ```
 //! 
-//! `folder_compress_with_sender` example.
+//! `FolderCompressor` and its `compress_with_sender` example.
 //!
 //! The function compress all images in given origin folder with multithread at the same time,
 //! and wait until everything is done. 
@@ -57,10 +57,10 @@
 //! let thread_count = 4;                           // number of threads
 //! let (tx, tr) = mpsc::channel();                 // Sender and Receiver. for more info, check mpsc and message passing. 
 //! 
-//! let mut folder_compressor = FolderCompressor::new(origin, dest);
-//! folder_compressor.set_cal_func(|width, height, file_size| {return Factor::new(75., 0.7)});
-//! folder_compressor.set_thread_count(4);
-//! match folder_compressor.compress_with_sender(tx.clone()) {
+//! let mut comp = FolderCompressor::new(origin, dest);
+//! comp.set_cal_func(|width, height, file_size| {return Factor::new(75., 0.7)});
+//! comp.set_thread_count(4);
+//! match comp.compress_with_sender(tx.clone()) {
 //!     Ok(_) => {},
 //!     Err(e) => println!("Cannot compress the folder!: {}", e),
 //! }
@@ -77,8 +77,8 @@
 //! let origin_dir = PathBuf::from("origin").join("file1.jpg");
 //! let dest_dir = PathBuf::from("dest");
 //!
-//! let compressor = Compressor::new(origin_dir, dest_dir, |width, height, file_size| {return Factor::new(75., 0.7)});
-//! compressor.compress_to_jpg();
+//! let comp = Compressor::new(origin_dir, dest_dir, |width, height, file_size| {return Factor::new(75., 0.7)});
+//! comp.compress_to_jpg();
 //! ```
 
 use std::error::Error;
@@ -129,7 +129,7 @@ impl FolderCompressor {
     /// let origin = Path::new("origin");
     /// let dest = Path::new("dest");
     /// 
-    /// let folder_compressor = FolderCompressor::new(origin, dest);
+    /// let comp = FolderCompressor::new(origin, dest);
     /// ```
     pub fn new<O: AsRef<Path>, D: AsRef<Path>>(origin_path: O, dest_path: D) -> Self{
         FolderCompressor { 
@@ -150,8 +150,8 @@ impl FolderCompressor {
     /// let origin = Path::new("origin");
     /// let dest = Path::new("dest");
     /// 
-    /// let mut folder_compressor = FolderCompressor::new(origin, dest);
-    /// folder_compressor.set_cal_func(|width, height, file_size| {return Factor::new(75., 0.7)});
+    /// let mut comp = FolderCompressor::new(origin, dest);
+    /// comp.set_cal_func(|width, height, file_size| {return Factor::new(75., 0.7)});
     /// ```
     pub fn set_cal_func(&mut self, cal_func: fn(u32, u32, u64) -> Factor){
         self.calculate_quality_and_size = Arc::new(cal_func);
@@ -167,8 +167,8 @@ impl FolderCompressor {
     /// let origin = Path::new("origin");
     /// let dest = Path::new("dest");
     /// 
-    /// let mut folder_compressor = FolderCompressor::new(origin, dest);
-    /// folder_compressor.set_thread_count(4);
+    /// let mut comp = FolderCompressor::new(origin, dest);
+    /// comp.set_thread_count(4);
     /// ```
     pub fn set_thread_count(&mut self, thread_count: u32){
         self.thread_count = thread_count;
@@ -191,8 +191,8 @@ impl FolderCompressor {
     /// let dest = PathBuf::from("dest_dir");
     /// let (tx, tr) = mpsc::channel();
     /// 
-    /// let mut folder_compressor = FolderCompressor::new(origin, dest);
-    /// folder_compressor.set_thread_count(4);
+    /// let mut comp = FolderCompressor::new(origin, dest);
+    /// comp.set_thread_count(4);
     /// 
     /// match folder_compressor.compress_with_sender(tx.clone()) {
     ///     Ok(_) => {},
@@ -258,8 +258,8 @@ impl FolderCompressor {
     /// let origin = PathBuf::from("origin_dir");
     /// let dest = PathBuf::from("dest_dir");
     /// 
-    /// let mut folder_compressor = FolderCompressor::new(origin, dest);
-    /// folder_compressor.set_thread_count(4);
+    /// let mut comp = FolderCompressor::new(origin, dest);
+    /// comp.set_thread_count(4);
     /// 
     /// match folder_compressor.compress(){
     ///     Ok(_) => {},
