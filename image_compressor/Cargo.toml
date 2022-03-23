@@ -2,7 +2,7 @@
 name = "image_compressor"
 author = ["Kim tae hyeon <kimth0734@gmail.com>"]
 description = "A image compressing module using mozjpeg, and image crates."
-version = "0.1.1"
+version = "1.0.0"
 edition = "2021"
 license = "MIT"
 
