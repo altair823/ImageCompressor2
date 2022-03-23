@@ -33,7 +33,7 @@
 //! let mut folder_compressor = FolderCompressor::new(origin, dest);
 //! folder_compressor.set_cal_func(|width, height, file_size| {return Factor::new(75., 0.7)});
 //! folder_compressor.set_thread_count(4);
-//! match folder_compressor.folder_compress(){
+//! match folder_compressor.compress(){
 //!     Ok(_) => {},
 //!     Err(e) => println!("Cannot compress the folder!: {}", e),
 //! }
@@ -60,7 +60,7 @@
 //! let mut folder_compressor = FolderCompressor::new(origin, dest);
 //! folder_compressor.set_cal_func(|width, height, file_size| {return Factor::new(75., 0.7)});
 //! folder_compressor.set_thread_count(4);
-//! match folder_compressor.folder_compress_with_sender(tx.clone()) {
+//! match folder_compressor.compress_with_sender(tx.clone()) {
 //!     Ok(_) => {},
 //!     Err(e) => println!("Cannot compress the folder!: {}", e),
 //! }
@@ -191,12 +191,12 @@ impl FolderCompressor {
     /// let mut folder_compressor = FolderCompressor::new(origin, dest);
     /// folder_compressor.set_thread_count(4);
     /// 
-    /// match folder_compressor.folder_compress_with_sender(tx.clone()) {
+    /// match folder_compressor.compress_with_sender(tx.clone()) {
     ///     Ok(_) => {},
     ///     Err(e) => println!("Cannot compress the folder!: {}", e),
     /// }
     /// ```
-    pub fn folder_compress_with_sender(
+    pub fn compress_with_sender(
         self,
         sender: mpsc::Sender<String>) -> Result<(), Box<dyn Error>> {
         let to_comp_file_list = get_file_list(&self.original_path)?;
@@ -255,12 +255,12 @@ impl FolderCompressor {
     /// let mut folder_compressor = FolderCompressor::new(origin, dest);
     /// folder_compressor.set_thread_count(4);
     /// 
-    /// match folder_compressor.folder_compress(){
+    /// match folder_compressor.compress(){
     ///     Ok(_) => {},
     ///     Err(e) => println!("Cannot compress the folder!: {}", e),
     /// }
     /// ```
-    pub fn folder_compress(self) -> Result<(), Box<dyn Error>>{
+    pub fn compress(self) -> Result<(), Box<dyn Error>>{
         let to_comp_file_list = get_file_list(&self.original_path)?;
         let queue = Arc::new(SegQueue::new());
         for i in to_comp_file_list{
