@@ -179,6 +179,9 @@ impl FolderCompressor {
     /// The function compress all images in given origin folder with multithread at the same time,
     /// and wait until everything is done. With `mpsc::Sender` (argument `tx` in this example),
     /// the process running in this function will dispatch a message indicating whether image compression is complete.
+    /// 
+    /// # Warning
+    /// Since this function comsume its `self`, the `FolderCompressor` instance (which is self) is no longer available after calling this function. 
     /// ```
     /// use std::path::PathBuf;
     /// use std::sync::mpsc;
@@ -244,6 +247,9 @@ impl FolderCompressor {
     ///
     /// The function compress all images in given origin folder with multithread at the same time,
     /// and wait until everything is done. This function does not send any messages.
+    /// 
+    /// # Warning
+    /// Since this function comsume its `self`, the `FolderCompressor` instance (which is self) is no longer available after calling this function. 
     /// ```
     /// use std::path::PathBuf;
     /// use std::sync::mpsc;
