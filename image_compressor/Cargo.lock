@@ -309,7 +309,7 @@ dependencies = [
 
 [[package]]
 name = "image_compressor"
-version = "0.1.1"
+version = "1.0.1"
 dependencies = [
  "crossbeam-queue",
  "fs_extra",
