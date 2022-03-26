@@ -20,6 +20,7 @@ const DESTINATION_KEY: &str = "destination";
 const ARCHIVE_KEY: &str = "archive";
 const TO_ZIP_KEY: &str = "to_zip";
 const THREAD_COUNT_KEY: &str = "thread_count";
+const DELETE_ORIGIN_KEY: &str = "delete_origin";
 
 pub const DEFAULT_SAVE_FILE_PATH: &str = "data/history.json";
 
@@ -32,6 +33,7 @@ pub struct App{
     is_ui_enable: Arc<AtomicBool>,
     thread_count: u32,
     to_zip: bool,
+    to_del_origin_files: bool,
     complete_file_list: Vec<String>,
     tr: Option<mpsc::Receiver<String>>,
     tx: Option<mpsc::Sender<String>>,
@@ -128,6 +130,9 @@ impl epi::App for App {
                             .hint_text("Archive folder"));
                     });
                 }
+
+                // Checkbox for deleting original files
+                ui.checkbox(&mut self.to_del_origin_files, "Delete original files");
                 ui.separator();
 
                 // Compress button group
@@ -262,6 +267,11 @@ impl epi::App for App {
             Some(DataType::Number(Some(n))) => n.clone(),
             _ => 1,
         } as u32;
+
+        self.to_del_origin_files = match self.program_data.get_data(DELETE_ORIGIN_KEY) {
+            Some(DataType::Boolean(Some(b))) => b.clone(),
+            _ => false,
+        }
     }
 
     fn on_exit_event(&mut self) -> bool {
@@ -279,7 +289,9 @@ impl epi::App for App {
         })));
         self.program_data.set_data(TO_ZIP_KEY, DataType::Boolean(Some(self.to_zip)));
         self.program_data.set_data(THREAD_COUNT_KEY, DataType::Number(Some(self.thread_count as i32)));
-        match self.program_data.save( DEFAULT_SAVE_FILE_PATH){
+        self.program_data.set_data(DELETE_ORIGIN_KEY, DataType::Boolean(Some(self.to_del_origin_files)));
+
+        match self.program_data.save(DEFAULT_SAVE_FILE_PATH){
             Ok(_) => {}
             Err(e) => println!("Cannot save the directory history! : {}", e),
         }

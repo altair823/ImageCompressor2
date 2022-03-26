@@ -97,12 +97,12 @@ pub use compressor::Factor;
 
 fn default_cal_func(_width: u32, _height: u32, file_size: u64) -> Factor {
     return match file_size{
-        file_size if file_size > 5000000 => Factor::new(60., 0.5),
-        file_size if file_size > 1000000 => Factor::new(65., 0.6),
-        file_size if file_size > 500000 => Factor::new(70., 0.6),
-        file_size if file_size > 300000 => Factor::new(75., 0.7),
-        file_size if file_size > 100000 => Factor::new(80., 0.7),
-        _ => Factor::new(85., 0.8),
+        file_size if file_size > 5000000 => Factor::new(60., 0.7),
+        file_size if file_size > 1000000 => Factor::new(65., 0.75),
+        file_size if file_size > 500000 => Factor::new(70., 0.8),
+        file_size if file_size > 300000 => Factor::new(75., 0.85),
+        file_size if file_size > 100000 => Factor::new(80., 0.9),
+        _ => Factor::new(85., 1.0),
     }
 }
 
@@ -432,7 +432,7 @@ mod tests {
         fs::create_dir(&test_dest_dir.as_path()).unwrap();
 
         let options = CopyOptions::new();
-        dir::copy("original_images", &test_origin_dir, &options).unwrap();
+        fs::copy("original_images", &test_origin_dir, &options).unwrap();
 
         (test_num, test_origin_dir, test_dest_dir)
     }
@@ -451,6 +451,7 @@ mod tests {
     #[test]
     fn folder_compress_test() {
         let (_, test_origin_dir, test_dest_dir) = setup(4);
+        let mut folder_compressor = FolderCompressor::new();
         folder_compress(test_origin_dir, test_dest_dir, 4).unwrap();
         cleanup(4);
     }
