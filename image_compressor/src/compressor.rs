@@ -314,6 +314,8 @@ impl<O: AsRef<Path>, D: AsRef<Path>> Compressor<O, D> {
 #[cfg(test)]
 mod tests{
     use std::fs;
+    use mozjpeg::CompInfoExt;
+
     use super::*;
 
     fn setup(test_num: i32) -> (i32, PathBuf, PathBuf){
@@ -321,14 +323,14 @@ mod tests{
         if test_origin_dir.is_dir(){
             fs::remove_dir_all(&test_origin_dir).unwrap();
         }
-        fs::create_dir(&test_origin_dir.as_path()).unwrap();
+        fs::create_dir_all(&test_origin_dir.as_path()).unwrap();
 
 
         let test_dest_dir = PathBuf::from(&format!("{}{}", "test_dest", test_num));
         if test_dest_dir.is_dir(){
             fs::remove_dir_all(&test_dest_dir).unwrap();
         }
-        fs::create_dir(&test_dest_dir.as_path()).unwrap();
+        fs::create_dir_all(&test_dest_dir.as_path()).unwrap();
 
         (test_num, test_origin_dir, test_dest_dir)
     }
@@ -349,12 +351,14 @@ mod tests{
         let (_, test_origin_dir, test_dest_dir) = setup(1);
 
         fs::copy("original_images/file1.png", test_origin_dir.join("file1.png")).unwrap();
-        assert_eq!(convert_to_jpg(&test_origin_dir.join("file1.png"), &test_dest_dir).unwrap(),
-                   test_dest_dir.join("file1.jpg"));
+        let compressor = Compressor::new(test_origin_dir.join("file1.png"), &test_dest_dir, |_, _, _|{return Factor::new(70., 0.7)});
+        assert_eq!(compressor.convert_to_jpg().unwrap(),
+                   test_origin_dir.join("file1.jpg"));
 
         fs::copy("original_images/dir1/file5.webp", test_origin_dir.join("file5.webp")).unwrap();
-        assert_eq!(convert_to_jpg(&test_origin_dir.join("file5.webp"), &test_dest_dir).unwrap(),
-                    test_dest_dir.join("file5.jpg"));
+        let compressor = Compressor::new(test_origin_dir.join("file5.webp"), &test_dest_dir, |_, _, _|{return Factor::new(70., 0.7)});
+        assert_eq!(compressor.convert_to_jpg().unwrap(),
+                    test_origin_dir.join("file5.jpg"));
         cleanup(1);
     }
 
@@ -366,7 +370,9 @@ mod tests{
 
         fs::copy(Path::new("original_images/file4.jpg"), &test_origin_path).unwrap();
 
-        compress_to_jpg(test_origin_dir.join("file4.jpg"), test_dest_dir, |i| -> (f32, f32) { return (75., 0.7);}).unwrap();
+        let compressor = Compressor::new(test_origin_dir.join("file4.jpg"), test_dest_dir, |_, _, _|{ return Factor::new(75., 0.7);});
+
+        compressor.compress_to_jpg().unwrap();
 
         assert!(test_dest_path.is_file());
         println!("Original file size: {}, Compressed file size: {}",
@@ -379,7 +385,8 @@ mod tests{
         let (_, test_origin_dir, test_dest_dir) = setup(3);
         fs::copy("original_images/file7.txt", test_origin_dir.join("file7.txt")).unwrap();
 
-        assert!(compress_to_jpg(test_origin_dir.join("file7.txt"), &test_dest_dir, |i| -> (f32, f32) { return (75., 0.7);}).is_err());
+        let compressor = Compressor::new((&test_origin_dir).join("file7.txt"), &test_dest_dir, |_, _, _|{ return Factor::new(75., 0.7);});
+        assert!(compressor.compress_to_jpg().is_err());
         assert!(test_dest_dir.join("file7.txt").is_file());
         cleanup(3);
     }
@@ -387,7 +394,7 @@ mod tests{
     #[test]
     fn delete_duplicate_file_test(){
         let (_, test_origin_dir, _) = setup(7);
-        //fs::copy("original_images/file1.png", test_origin_dir.join("file1.png")).unwrap();
+        fs::copy("original_images/file1.png", test_origin_dir.join("file1.png")).unwrap();
         fs::copy("original_images/file2.jpg", test_origin_dir.join("file2.jpg")).unwrap();
 
         match delete_duplicate_file(test_origin_dir.join("file2.jpg")){
@@ -402,7 +409,7 @@ mod tests{
         let (_, test_origin_dir, test_dest_dir) = setup(9);
         fs::copy("original_images/file2.jpg", test_origin_dir.join("file2.jpg")).unwrap();
 
-        let compressor = Compressor::new(test_origin_dir, test_dest_dir, |width, height, file_size| {return Factor::new(75., 0.7)});
+        let mut compressor = Compressor::new(test_origin_dir.join("file2.jpg"), test_dest_dir, |width, height, file_size| {return Factor::new(75., 0.7)});
         compressor.set_delete_origin(true);
         compressor.compress_to_jpg();
         cleanup(9);
