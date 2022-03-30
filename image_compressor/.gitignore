@@ -4,4 +4,5 @@ Cargo.lock
 /doc/
 .DS_Store
 /build/
+/test*
 /.idea/

@@ -130,6 +130,7 @@ impl epi::App for App {
                             .hint_text("Archive folder"));
                     });
                 }
+                ui.separator();
 
                 // Checkbox for deleting original files
                 ui.checkbox(&mut self.to_del_origin_files, "Delete original files");
@@ -171,9 +172,11 @@ impl epi::App for App {
                         let archive_tx = self.tx.clone();
                         let th_count = self.thread_count;
                         let z = self.to_zip;
+                        let to_del_origin = self.to_del_origin_files;
                         thread::spawn(move || {
                             let mut compressor = FolderCompressor::new((*origin).as_ref().unwrap().to_path_buf(), (*dest).as_ref().unwrap().to_path_buf());
                             compressor.set_thread_count(th_count);
+                            compressor.set_delelte_origin(to_del_origin);
                             match compressor.compress_with_sender(compressor_tx.unwrap()) {
                                 Ok(_) => {
                                     if !z {
