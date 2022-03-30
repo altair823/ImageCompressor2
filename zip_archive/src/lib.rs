@@ -26,17 +26,14 @@ fn compress_a_dir_to_7z(origin: &Path, dest: &Path, root: &Path) ->Result<PathBu
 
     let compressor_path = get_7z_executable_path()?;
 
-    let zip_path = dest.join(&match origin.strip_prefix(root){
+    let mut zip_path = dest.join(&match origin.strip_prefix(root){
         Ok(p) => p,
         Err(_) => origin,
     });
+    zip_path.set_extension("7z");
 
     if zip_path.is_file(){
         return Err(Box::new(io::Error::new(ErrorKind::AlreadyExists, "The 7z archive file already exists!")));
-    }
-
-    if Path::new(zip_path.to_str().unwrap()).is_dir(){
-        return Err(Box::new(io::Error::new(ErrorKind::AlreadyExists, "The 7z file is already existed! Abort archiving.")));
     }
 
     let exec = Exec::cmd(compressor_path)
