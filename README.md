@@ -1,6 +1,6 @@
 # Image Compressor 2
 
-A rust GUI program for compressing images. 
+A rust GUI image compressing program. 
 
 ## Features
 - Compress images in a specific directory to jpg format.
