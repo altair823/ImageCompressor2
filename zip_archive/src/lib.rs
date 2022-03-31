@@ -1,3 +1,5 @@
+//! Archive files to 7z format.
+
 use std::path::{Path, PathBuf};
 use std::env::consts::OS;
 use std::error::Error;
