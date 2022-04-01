@@ -9,7 +9,7 @@ dependencies = [
  "atomic_refcell",
  "eframe",
  "egui",
- "image_compressor",
+ "image_compressor 1.1.0",
  "rfd",
  "serde",
  "serde_json",
@@ -1273,6 +1273,17 @@ dependencies = [
 [[package]]
 name = "image_compressor"
 version = "1.1.0"
+dependencies = [
+ "crossbeam-queue",
+ "image",
+ "mozjpeg",
+]
+
+[[package]]
+name = "image_compressor"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cabf440dbff8aec7fa389ff9fa1ef36d8ecf53b5792804c70d2296872fe0a1b"
 dependencies = [
  "crossbeam-queue",
  "image",
@@ -2938,10 +2949,10 @@ dependencies = [
 
 [[package]]
 name = "zip_archive"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "crossbeam-queue",
- "image_compressor",
+ "image_compressor 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "subprocess",
 ]
 

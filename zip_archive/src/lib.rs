@@ -1,4 +1,36 @@
-//! Archive files to 7z format.
+//! # Zip archive
+//! 
+//! `zip_archive` is a library that select 7z executable that are depending on the operating system, 
+//! and run it with multithread. 
+//! 
+//! # Examples
+//! 
+//! ```
+//! use std::path::PathBuf;
+//! use zip_archive::archive_root_dir;
+//! 
+//! let origin = PathBuf::from("./origin");
+//! let dest = PathBuf::from("./dest");
+//! let thread_count = 4;
+//! 
+//! match archive_root_dir(origin, dest, thread_count){
+//!     Ok(_) => (),
+//!     Err(e) => println!("Cannot archive the directory! {}", e),
+//! };
+//! ```
+//! 
+//! # Requirements
+//! 
+//! ## Windows 10
+//! 
+//! 1. Install [7-Zip](https://www.7-zip.org/). 
+//! 2. Find 7z.exe file in installed program folder and add it to path. 
+//! Or place it in project root folder. 
+//! 
+//! ## macOS
+//! 
+//! 1. Download [7-Zip console version executable](https://www.7-zip.org/download.html) for macOS.
+//! 2. Place 7zz executable to home directory. 
 
 use std::path::{Path, PathBuf};
 use std::env::consts::OS;
@@ -88,6 +120,24 @@ fn process_with_sender(queue: Arc<SegQueue<PathBuf>>,
     }
 }
 
+/// Compress the given directory with multithread. 
+/// 
+/// # Examples
+/// 
+/// ```
+/// use std::path::PathBuf;
+/// use zip_archive::archive_root_dir;
+/// 
+/// let origin = PathBuf::from("./origin");
+/// let dest = PathBuf::from("./dest");
+/// let thread_count = 4;
+/// 
+/// match archive_root_dir(origin, dest, thread_count){
+///     Ok(_) => (),
+///     Err(e) => println!("Cannot archive the directory! {}", e),
+/// };
+/// ```
+/// 
 pub fn archive_root_dir(root: PathBuf,
                         dest: PathBuf,
                         thread_count: u32) -> Result<(), Box<dyn Error>>{
@@ -117,6 +167,26 @@ pub fn archive_root_dir(root: PathBuf,
     Ok(())
 }
 
+/// Compress the given directory with multithread and Sender. 
+/// 
+/// # Examples
+/// 
+/// ```
+/// use std::path::PathBuf;
+/// use std::sync::mpsc;
+/// use zip_archive::archive_root_dir_with_sender;
+/// 
+/// let origin = PathBuf::from("./origin");
+/// let dest = PathBuf::from("./dest");
+/// let thread_count = 4;
+/// let (tx, tr) = mpsc::channel();
+/// 
+/// match archive_root_dir_with_sender(origin, dest, thread_count, tx.clone()){
+///     Ok(_) => (),
+///     Err(e) => println!("Cannot archive the directory! {}", e),
+/// };
+/// ```
+/// 
 pub fn archive_root_dir_with_sender(root: PathBuf,
                                     dest: PathBuf,
                                     thread_count: u32,
