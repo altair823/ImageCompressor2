@@ -18,5 +18,5 @@ rfd = "0.8.1"
 serde = { version = "1.0.136", default-features = false, features = ["derive"]}
 serde_json = "1.0.79"
 atomic_refcell = "0.1.8"
-image_compressor = {path = "image_compressor"}
-zip_archive = {path = "zip_archive"}
+image_compressor = "1.1.1"
+zip_archive = "0.1.1"
