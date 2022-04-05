@@ -13,3 +13,4 @@
 7zzs
 .DS_Store
 Cargo.lock
+/packages/
