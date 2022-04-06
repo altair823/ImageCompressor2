@@ -12,5 +12,7 @@
 7zz
 7zzs
 .DS_Store
+*.iml
 Cargo.lock
 /packages/
+/examples/
