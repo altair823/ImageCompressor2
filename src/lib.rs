@@ -140,14 +140,14 @@ impl epi::App for App {
                 ui.group(|ui| {
 
                     // Condition for compress
-                    match *(*self.origin_dir).borrow() {
-                        Some(_) => {
-                            match *(*self.dest_dir).borrow() {
-                                Some(_) => {
+                    match &*(*self.origin_dir).borrow() {
+                        Some(p) if !p.as_os_str().is_empty()  => {
+                            match &*(*self.dest_dir).borrow() {
+                                Some(p) if !p.as_os_str().is_empty() => {
                                     match self.to_zip {
                                         true => {
-                                            match *(*self.archive_dir).borrow() {
-                                                Some(_) => ui.set_enabled(true),
+                                            match &*(*self.archive_dir).borrow() {
+                                                Some(p) if !p.as_os_str().is_empty() => ui.set_enabled(true),
                                                 _ => ui.set_enabled(false),
                                             }
                                         }
