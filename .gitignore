@@ -15,4 +15,3 @@
 *.iml
 Cargo.lock
 /packages/
-/examples/
