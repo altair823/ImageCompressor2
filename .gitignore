@@ -15,3 +15,6 @@
 *.iml
 Cargo.lock
 /packages/
+/original_images/
+/dest/
+/arc/

@@ -10,7 +10,7 @@ use egui::{Context, Slider, TextEdit, Vec2};
 use std::thread;
 use std::sync::mpsc;
 use image_compressor::FolderCompressor;
-use zip_archive::archive_root_dir_with_sender;
+use zip_archive::{Archiver, get_dir_list_with_depth};
 
 use crate::epi::{Frame, Storage};
 use crate::file_io::{ProgramData, DataType};
@@ -173,6 +173,8 @@ impl epi::App for App {
                         let th_count = self.thread_count;
                         let z = self.to_zip;
                         let to_del_origin = self.to_del_origin_files;
+                        let archive_dir_list = get_dir_list_with_depth((*origin).as_ref().unwrap().to_path_buf(), 1).unwrap();
+                        
                         thread::spawn(move || {
                             let mut compressor = FolderCompressor::new((*origin).as_ref().unwrap().to_path_buf(), (*dest).as_ref().unwrap().to_path_buf());
                             compressor.set_thread_count(th_count);
@@ -188,10 +190,12 @@ impl epi::App for App {
                                 }
                             };
                             if z {
-                                match archive_root_dir_with_sender((*dest).as_ref().unwrap().to_path_buf(),
-                                                                   (*archive).as_ref().unwrap().to_path_buf(),
-                                                                   th_count,
-                                                                   archive_tx.unwrap()) {
+                                let mut archiver = Archiver::new();
+                                archiver.set_destination((*archive).as_ref().unwrap().to_path_buf());
+                                archiver.set_thread_count(th_count);
+                                archiver.push_from_iter(archive_dir_list.iter());
+                                archiver.set_sender(archive_tx.unwrap());
+                                match archiver.archive() {
                                     Ok(_) => { is_ui_enable.swap(true, Ordering::Relaxed); }
                                     Err(e) => {
                                         println!("Cannot archive the folder!: {}", e);
