@@ -51,8 +51,10 @@ impl epi::App for App {
                 None => {}
             }
 
+            let version = env!("CARGO_PKG_VERSION");
+
             // Title
-            ui.vertical_centered(|ui| ui.heading("Image Compress and Archive Program"));
+            ui.vertical_centered(|ui| ui.heading(format!("Image Compress and Archive Program     v{}", version)));
             ui.add_space(10.);
 
             // UI group
