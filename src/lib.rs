@@ -173,7 +173,7 @@ impl epi::App for App {
                         let th_count = self.thread_count;
                         let z = self.to_zip;
                         let to_del_origin = self.to_del_origin_files;
-                        let archive_dir_list = get_dir_list_with_depth((*origin).as_ref().unwrap().to_path_buf(), 1).unwrap();
+                        let origin_dir_list = get_dir_list_with_depth((*origin).as_ref().unwrap().to_path_buf(), 1).unwrap();
                         
                         thread::spawn(move || {
                             let mut compressor = FolderCompressor::new((*origin).as_ref().unwrap().to_path_buf(), (*dest).as_ref().unwrap().to_path_buf());
@@ -190,6 +190,15 @@ impl epi::App for App {
                                 }
                             };
                             if z {
+                                let mut archive_dir_list = Vec::new();
+                                let dest_dir_list = get_dir_list_with_depth((*dest).as_ref().unwrap(), 1).unwrap();
+                                for o_dir in origin_dir_list{
+                                    for d_dir in &dest_dir_list{
+                                        if o_dir.file_name().unwrap().eq(d_dir.file_name().unwrap()){
+                                            archive_dir_list.push(d_dir.to_path_buf());
+                                        }
+                                    }
+                                }
                                 let mut archiver = Archiver::new();
                                 archiver.set_destination((*archive).as_ref().unwrap().to_path_buf());
                                 archiver.set_thread_count(th_count);
