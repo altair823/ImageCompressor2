@@ -181,7 +181,8 @@ impl epi::App for App {
                             let mut compressor = FolderCompressor::new((*origin).as_ref().unwrap().to_path_buf(), (*dest).as_ref().unwrap().to_path_buf());
                             compressor.set_thread_count(th_count);
                             compressor.set_delelte_origin(to_del_origin);
-                            match compressor.compress_with_sender(compressor_tx.unwrap()) {
+                            compressor.set_sender(compressor_tx.unwrap());
+                            match compressor.compress() {
                                 Ok(_) => {
                                     if !z {
                                         is_ui_enable.swap(true, Ordering::Relaxed);
