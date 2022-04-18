@@ -12,5 +12,9 @@
 7zz
 7zzs
 .DS_Store
+*.iml
 Cargo.lock
 /packages/
+/original_images/
+/dest/
+/arc/

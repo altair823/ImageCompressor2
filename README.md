@@ -13,12 +13,12 @@ A rust GUI image compressing program.
 
 Compress original directory
 
-![compress_demo](./examples/compress_demo.webp)
+![compress_demo](./demo/compress_demo.webp)
 
 
 Compress and archive original directory
 
-![compress_and_archive_demo](./examples/compress_and_archive_demo.webp)
+![compress_and_archive_demo](./demo/compress_and_archive_demo.webp)
 
 ## Supported Image Formats
 

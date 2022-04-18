@@ -10,7 +10,7 @@ use egui::{Context, Slider, TextEdit, Vec2};
 use std::thread;
 use std::sync::mpsc;
 use image_compressor::FolderCompressor;
-use zip_archive::archive_root_dir_with_sender;
+use zip_archive::{Archiver, get_dir_list_with_depth};
 
 use crate::epi::{Frame, Storage};
 use crate::file_io::{ProgramData, DataType};
@@ -51,8 +51,10 @@ impl epi::App for App {
                 None => {}
             }
 
+            let version = env!("CARGO_PKG_VERSION");
+
             // Title
-            ui.vertical_centered(|ui| ui.heading("Image Compress and Archive Program"));
+            ui.vertical_centered(|ui| ui.heading(format!("Image Compress and Archive Program     v{}", version)));
             ui.add_space(10.);
 
             // UI group
@@ -140,14 +142,14 @@ impl epi::App for App {
                 ui.group(|ui| {
 
                     // Condition for compress
-                    match *(*self.origin_dir).borrow() {
-                        Some(_) => {
-                            match *(*self.dest_dir).borrow() {
-                                Some(_) => {
+                    match &*(*self.origin_dir).borrow() {
+                        Some(p) if !p.as_os_str().is_empty()  => {
+                            match &*(*self.dest_dir).borrow() {
+                                Some(p) if !p.as_os_str().is_empty() => {
                                     match self.to_zip {
                                         true => {
-                                            match *(*self.archive_dir).borrow() {
-                                                Some(_) => ui.set_enabled(true),
+                                            match &*(*self.archive_dir).borrow() {
+                                                Some(p) if !p.as_os_str().is_empty() => ui.set_enabled(true),
                                                 _ => ui.set_enabled(false),
                                             }
                                         }
@@ -173,11 +175,14 @@ impl epi::App for App {
                         let th_count = self.thread_count;
                         let z = self.to_zip;
                         let to_del_origin = self.to_del_origin_files;
+                        let origin_dir_list = get_dir_list_with_depth((*origin).as_ref().unwrap().to_path_buf(), 1).unwrap();
+                        
                         thread::spawn(move || {
                             let mut compressor = FolderCompressor::new((*origin).as_ref().unwrap().to_path_buf(), (*dest).as_ref().unwrap().to_path_buf());
                             compressor.set_thread_count(th_count);
                             compressor.set_delelte_origin(to_del_origin);
-                            match compressor.compress_with_sender(compressor_tx.unwrap()) {
+                            compressor.set_sender(compressor_tx.unwrap());
+                            match compressor.compress() {
                                 Ok(_) => {
                                     if !z {
                                         is_ui_enable.swap(true, Ordering::Relaxed);
@@ -188,10 +193,21 @@ impl epi::App for App {
                                 }
                             };
                             if z {
-                                match archive_root_dir_with_sender((*dest).as_ref().unwrap().to_path_buf(),
-                                                                   (*archive).as_ref().unwrap().to_path_buf(),
-                                                                   th_count,
-                                                                   archive_tx.unwrap()) {
+                                let mut archive_dir_list = Vec::new();
+                                let dest_dir_list = get_dir_list_with_depth((*dest).as_ref().unwrap(), 1).unwrap();
+                                for o_dir in origin_dir_list{
+                                    for d_dir in &dest_dir_list{
+                                        if o_dir.file_name().unwrap().eq(d_dir.file_name().unwrap()){
+                                            archive_dir_list.push(d_dir.to_path_buf());
+                                        }
+                                    }
+                                }
+                                let mut archiver = Archiver::new();
+                                archiver.set_destination((*archive).as_ref().unwrap().to_path_buf());
+                                archiver.set_thread_count(th_count);
+                                archiver.push_from_iter(archive_dir_list.iter());
+                                archiver.set_sender(archive_tx.unwrap());
+                                match archiver.archive() {
                                     Ok(_) => { is_ui_enable.swap(true, Ordering::Relaxed); }
                                     Err(e) => {
                                         println!("Cannot archive the folder!: {}", e);
