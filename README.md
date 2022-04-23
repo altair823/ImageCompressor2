@@ -46,7 +46,7 @@ or just download 7z.exe file in release page, and place it next to this executab
 
 #### macOS Monterey
 
-1. Visit [7-Zip download page](https://www.7-zip.org/download.html) and download console version 7-Zip executable.
+1. Visit [7-Zip download page](https://www.7-zip.org/download.html) and download console version 7-Zip executable for macOS. 
 2. Place 7zz file to home directory(which is "~").
 
 or just download 7zz file in release page, and place it home directory.
