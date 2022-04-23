@@ -10,17 +10,18 @@ use egui::{Context, Slider, TextEdit, Vec2};
 use std::thread;
 use std::sync::mpsc;
 use image_compressor::FolderCompressor;
-use zip_archive::{Archiver, get_dir_list_with_depth};
+use zip_archive::{Archiver, get_dir_list_with_depth, Format};
 
 use crate::epi::{Frame, Storage};
 use crate::file_io::{ProgramData, DataType};
 
-const ORIGIN_KEY: &str = "origin";
-const DESTINATION_KEY: &str = "destination";
-const ARCHIVE_KEY: &str = "archive";
+const ORIGIN_DIR_KEY: &str = "origin_dir";
+const DESTINATION_DIR_KEY: &str = "destination_dir";
+const ARCHIVE_DIR_KEY: &str = "archive_dir";
 const TO_ZIP_KEY: &str = "to_zip";
 const THREAD_COUNT_KEY: &str = "thread_count";
 const DELETE_ORIGIN_KEY: &str = "delete_origin";
+const ARCHIVE_FORMAT_KEY: &str = "archive_format";
 
 pub const DEFAULT_SAVE_FILE_PATH: &str = "data/history.json";
 
@@ -37,6 +38,7 @@ pub struct App{
     complete_file_list: Vec<String>,
     tr: Option<mpsc::Receiver<String>>,
     tx: Option<mpsc::Sender<String>>,
+    archive_format: Format,
 }
 
 impl epi::App for App {
@@ -111,7 +113,7 @@ impl epi::App for App {
 
                 // Checkbox for archiving
                 // Archiving folder selector
-                ui.checkbox(&mut self.to_zip, "Archive with 7z");
+                ui.checkbox(&mut self.to_zip, "Archive subdirectories");
                 if self.to_zip {
                     ui.heading("Archive folder");
                     if ui.button("select").clicked() {
@@ -130,6 +132,12 @@ impl epi::App for App {
                                 None => "",
                             }).interactive(false)
                             .hint_text("Archive folder"));
+                    });
+                    ui.label("Archive format: ");
+                    ui.horizontal(|ui|{
+                        ui.selectable_value(&mut self.archive_format, Format::Zip, "Zip");
+                        ui.selectable_value(&mut self.archive_format, Format::Xz, "Xz");
+                        ui.selectable_value(&mut self.archive_format, Format::_7z, "7z");
                     });
                 }
                 ui.separator();
@@ -176,6 +184,7 @@ impl epi::App for App {
                         let z = self.to_zip;
                         let to_del_origin = self.to_del_origin_files;
                         let origin_dir_list = get_dir_list_with_depth((*origin).as_ref().unwrap().to_path_buf(), 1).unwrap();
+                        let archive_format = self.archive_format.clone();
                         
                         thread::spawn(move || {
                             let mut compressor = FolderCompressor::new((*origin).as_ref().unwrap().to_path_buf(), (*dest).as_ref().unwrap().to_path_buf());
@@ -207,6 +216,7 @@ impl epi::App for App {
                                 archiver.set_thread_count(th_count);
                                 archiver.push_from_iter(archive_dir_list.iter());
                                 archiver.set_sender(archive_tx.unwrap());
+                                archiver.set_format(archive_format);
                                 match archiver.archive() {
                                     Ok(_) => { is_ui_enable.swap(true, Ordering::Relaxed); }
                                     Err(e) => {
@@ -264,15 +274,15 @@ impl epi::App for App {
             }
         };
 
-        self.origin_dir = match self.program_data.get_data(ORIGIN_KEY){
+        self.origin_dir = match self.program_data.get_data(ORIGIN_DIR_KEY){
             Some(DataType::Directory(Some(p))) => Arc::new(Some(p.to_path_buf())),
             _ => Arc::new(Some(PathBuf::from(""))),
         };
-        self.dest_dir = match self.program_data.get_data(DESTINATION_KEY) {
+        self.dest_dir = match self.program_data.get_data(DESTINATION_DIR_KEY) {
             Some(DataType::Directory(Some(p))) => Arc::new(Some(p.to_path_buf())),
             _ => Arc::new(Some(PathBuf::from(""))),
         };
-        self.archive_dir = match self.program_data.get_data(ARCHIVE_KEY){
+        self.archive_dir = match self.program_data.get_data(ARCHIVE_DIR_KEY){
             Some(DataType::Directory(Some(p))) => Arc::new(Some(p.to_path_buf())),
             _ => Arc::new(Some(PathBuf::from(""))),
         };
@@ -290,25 +300,31 @@ impl epi::App for App {
         self.to_del_origin_files = match self.program_data.get_data(DELETE_ORIGIN_KEY) {
             Some(DataType::Boolean(Some(b))) => b.clone(),
             _ => false,
-        }
+        };
+
+        self.archive_format = match self.program_data.get_data(ARCHIVE_FORMAT_KEY){
+            Some(DataType::String(Some(b))) => Format::from(b),
+            _ => Format::Zip,
+        };
     }
 
     fn on_exit_event(&mut self) -> bool {
-        self.program_data.set_data(ORIGIN_KEY, DataType::Directory(Some(match &(*self.origin_dir) {
+        self.program_data.set_data(ORIGIN_DIR_KEY, DataType::Directory(Some(match &(*self.origin_dir) {
             Some(p) => p.to_path_buf(),
             None => PathBuf::from(""),
         })));
-        self.program_data.set_data(DESTINATION_KEY, DataType::Directory(Some(match &(*self.dest_dir) {
+        self.program_data.set_data(DESTINATION_DIR_KEY, DataType::Directory(Some(match &(*self.dest_dir) {
             Some(p) => p.to_path_buf(),
             None => PathBuf::from(""),
         })));
-        self.program_data.set_data(ARCHIVE_KEY, DataType::Directory(Some(match &(*self.archive_dir) {
+        self.program_data.set_data(ARCHIVE_DIR_KEY, DataType::Directory(Some(match &(*self.archive_dir) {
             Some(p) => p.to_path_buf(),
             None => PathBuf::from(""),
         })));
         self.program_data.set_data(TO_ZIP_KEY, DataType::Boolean(Some(self.to_zip)));
         self.program_data.set_data(THREAD_COUNT_KEY, DataType::Number(Some(self.thread_count as i32)));
         self.program_data.set_data(DELETE_ORIGIN_KEY, DataType::Boolean(Some(self.to_del_origin_files)));
+        self.program_data.set_data(ARCHIVE_FORMAT_KEY, DataType::String(Some(self.archive_format.to_string())));
 
         match self.program_data.save(DEFAULT_SAVE_FILE_PATH){
             Ok(_) => {}
