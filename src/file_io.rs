@@ -13,6 +13,7 @@ pub enum DataType{
     Directory(Option<PathBuf>),
     Number(Option<i32>),
     Boolean(Option<bool>),
+    String(Option<String>),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
