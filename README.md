@@ -32,21 +32,3 @@ It compresses images to jpg format only!
 - macOS 12 Monterey or later
 
 It's technically possible to run other OS's as well(such as Linux, or Windows 11), but that hasn't been tested.
-
-## Requirements for archiving with 7z format
-
-If you want to use the feature that compress result images with directory.7z, the following conditions must be met:
-
-#### Windows 10
-
-1. Install [7-Zip](https://www.7-zip.org/).
-2. Find 7z.exe in installed program folder and add it to path.
-
-or just download 7z.exe file in release page, and place it next to this executable program.
-
-#### macOS Monterey
-
-1. Visit [7-Zip download page](https://www.7-zip.org/download.html) and download console version 7-Zip executable for macOS. 
-2. Place 7zz file to home directory(which is "~").
-
-or just download 7zz file in release page, and place it home directory.
