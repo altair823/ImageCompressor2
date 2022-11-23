@@ -28,7 +28,7 @@ It compresses images to jpg format only!
 
 ## Supported Operating System
 
-- Windows 10
+- Windows 10/11
 - macOS 12 Monterey or later
 
-It's technically possible to run other OS's as well(such as Linux, or Windows 11), but that hasn't been tested.
+It's technically possible to run other OS's as well(such as Linux), but that hasn't been tested.
