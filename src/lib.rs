@@ -1,7 +1,6 @@
 mod file_io;
 
 use std::borrow::Borrow;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -70,7 +69,7 @@ impl epi::App for App {
                         self.origin_dir = Arc::new(Some(path));
                     }
                 }
-                let origin_dir = match (*self.origin_dir).borrow().deref(){
+                let origin_dir = match (*self.origin_dir).borrow() {
                     Some(p) => p.to_path_buf(),
                     None => PathBuf::new(),
                 };
@@ -92,7 +91,7 @@ impl epi::App for App {
                         self.dest_dir = Arc::new(Some(path));
                     }
                 }
-                let dest_dir = match (*self.dest_dir).borrow().deref(){
+                let dest_dir = match (*self.dest_dir).borrow() {
                     Some(p) => p.to_path_buf(),
                     None => PathBuf::new(),
                 };
@@ -121,7 +120,7 @@ impl epi::App for App {
                             self.archive_dir = Arc::new(Some(path));
                         }
                     }
-                    let archive_dir = match (*self.archive_dir).borrow().deref(){
+                    let archive_dir = match (*self.archive_dir).borrow() {
                         Some(p) => p.to_path_buf(),
                         None => PathBuf::new(),
                     };
@@ -189,7 +188,7 @@ impl epi::App for App {
                         thread::spawn(move || {
                             let mut compressor = FolderCompressor::new((*origin).as_ref().unwrap().to_path_buf(), (*dest).as_ref().unwrap().to_path_buf());
                             compressor.set_thread_count(th_count);
-                            compressor.set_delelte_origin(to_del_origin);
+                            compressor.set_delete_source(to_del_origin);
                             compressor.set_sender(compressor_tx.unwrap());
                             match compressor.compress() {
                                 Ok(_) => {
